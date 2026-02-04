@@ -23,12 +23,44 @@ package wolfSSL
 
 // #include <wolfssl/options.h>
 // #include <wolfssl/wolfcrypt/hmac.h>
+// #ifdef _WIN32
+// #include <stdlib.h>
+// #include <malloc.h>
+// Hmac* wc_HmacAllocAligned(void) {
+//     Hmac* ptr = (Hmac*)_aligned_malloc(sizeof(Hmac), 16);
+//     return ptr;
+// }
+// void wc_HmacFreeAllocAligned(Hmac* ptr) {
+//     _aligned_free(ptr);
+// }
+// #else
+// #include <stdlib.h>
+// Hmac* wc_HmacAllocAligned(void) {
+//     Hmac* ptr;
+//     if (posix_memalign((void**)&ptr, 16, sizeof(Hmac)) != 0) {
+//         return NULL;
+//     }
+//     return ptr;
+// }
+// void wc_HmacFreeAllocAligned(Hmac* ptr) {
+//     free(ptr);
+// }
+// #endif
 import "C"
 import (
     "unsafe"
 )
 
 type Hmac = C.struct_Hmac
+
+/* Returns a 16-byte aligned Hmac struct allocated on the C heap (needed by SSE instructions) */
+func Wc_HmacAllocAligned() *C.struct_Hmac {
+    return C.wc_HmacAllocAligned()
+}
+
+func Wc_HmacFreeAllocAligned(hmac *C.struct_Hmac) {
+    C.wc_HmacFreeAllocAligned(hmac)
+}
 
 func Wc_HmacInit(hmac *C.struct_Hmac, heap unsafe.Pointer, devId int) int {
     return int(C.wc_HmacInit(hmac, heap, C.int(devId)))
