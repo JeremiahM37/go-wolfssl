@@ -28,6 +28,7 @@ package wolfSSL
 // #include <wolfssl/wolfcrypt/pwdbased.h>
 // #ifdef NO_AES
 // #define AES_BLOCK_SIZE   1
+// #define AES_IV_SIZE      1
 // #define AES_128_KEY_SIZE 1
 // #define AES_192_KEY_SIZE 1
 // #define AES_256_KEY_SIZE 1
@@ -36,22 +37,37 @@ package wolfSSL
 // typedef struct Aes {} Aes;
 // int wc_AesInit(Aes* aes, void* heap, int devid) {
 //      return -174;
-//  }
-// int wc_AesFree(Aes* aes) {
-//      return -174;
-//  }
+// }
+// void wc_AesFree(Aes* aes) {
+//      return;
+// }
 // int wc_AesSetKey(Aes* aes, const byte* key, word32 len,
 //                 const byte* iv, int dir) {
 //      return -174;
 // }
-// #ifndef HAVE_AES_CBC
 // int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
 //      return -174;
 // }
 // int wc_AesCbcDecrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
 //      return -174;
 // }
-// #endif
+// int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len) {
+//      return -174;
+// }
+// int wc_AesGcmEncrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
+// }
+// int wc_AesGcmDecrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      const byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
+// }
+// Aes* wc_AesAllocAligned(void) { return NULL; }
+// void wc_AesFreeAllocAligned(Aes* ptr) { (void)ptr; }
 // #elif defined(_WIN32)
 // #include <stdlib.h>
 // #include <malloc.h>
@@ -73,6 +89,31 @@ package wolfSSL
 // }
 // void wc_AesFreeAllocAligned(Aes* ptr) {
 //     free(ptr);
+// }
+// #endif
+// #if !defined(NO_AES) && !defined(HAVE_AES_CBC)
+// int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
+//      return -174;
+// }
+// int wc_AesCbcDecrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
+//      return -174;
+// }
+// #endif
+// #if !defined(NO_AES) && !defined(HAVE_AESGCM)
+// int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len) {
+//      return -174;
+// }
+// int wc_AesGcmEncrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
+// }
+// int wc_AesGcmDecrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      const byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
 // }
 // #endif
 import "C"
