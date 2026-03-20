@@ -61,8 +61,11 @@ package wolfSSL
 // #endif
 import "C"
 import (
+    "sync"
     "unsafe"
 )
+
+var bioBufMap sync.Map
 
 type WOLFSSL_X509 = C.struct_WOLFSSL_X509
 type WOLFSSL_BIO = C.struct_WOLFSSL_BIO
@@ -138,15 +141,31 @@ func WolfSSL_X509_get_pubkey_buffer(cert *WOLFSSL_X509, out []byte, outLen *int)
 }
 
 func WolfSSL_BIO_new_mem_buf(buf []byte, bufLen int) *WOLFSSL_BIO {
-	var bufPtr *C.char
-	if bufLen > 0 && bufLen <= len(buf) {
-		bufPtr = (*C.char)(unsafe.Pointer(&buf[0]))
+	if bufLen <= 0 || bufLen > len(buf) {
+		return nil
 	}
-	return (*WOLFSSL_BIO)(C.wolfSSL_BIO_new_mem_buf(unsafe.Pointer(bufPtr), C.int(bufLen)))
+	cBuf := C.CBytes(buf[:bufLen])
+	bio := (*WOLFSSL_BIO)(C.wolfSSL_BIO_new_mem_buf(cBuf, C.int(bufLen)))
+	if bio != nil {
+		bioBufMap.Store(unsafe.Pointer(bio), cBuf)
+	} else {
+		C.free(cBuf)
+	}
+	return bio
 }
 
 func WolfSSL_BIO_free(bio *WOLFSSL_BIO) int {
-	return int(C.wolfSSL_BIO_free((*C.struct_WOLFSSL_BIO)(bio)))
+	if bio == nil {
+		return 1
+	}
+	cBuf, hasBuf := bioBufMap.LoadAndDelete(unsafe.Pointer(bio))
+	// Free the BIO before releasing the backing C buffer so teardown never
+	// observes freed backing storage.
+	ret := int(C.wolfSSL_BIO_free((*C.struct_WOLFSSL_BIO)(bio)))
+	if hasBuf {
+		C.free(cBuf.(unsafe.Pointer))
+	}
+	return ret
 }
 
 func WolfSSL_i2d_X509(x509 *WOLFSSL_X509, out *[]byte) int {
@@ -231,4 +250,3 @@ func WolfSSL_OBJ_txt2obj(s string, noName int) *WOLFSSL_ASN1_OBJECT {
 func WolfSSL_OBJ_cmp(a *WOLFSSL_ASN1_OBJECT, b *WOLFSSL_ASN1_OBJECT) int {
 	return int(C.wolfSSL_OBJ_cmp((*C.struct_WOLFSSL_ASN1_OBJECT)(a), (*C.struct_WOLFSSL_ASN1_OBJECT)(b)))
 }
-
