@@ -95,21 +95,25 @@ func Wc_curve25519_make_priv(rng *C.struct_WC_RNG, priv []byte) int {
 }
 
 func Wc_curve25519_import_private(priv []byte, key *C.struct_curve25519_key) int {
+    if len(priv) == 0 { return BAD_FUNC_ARG }
     return int(C.wc_curve25519_import_private_ex((*C.uchar)(unsafe.Pointer(&priv[0])),
                C.word32(len(priv)), key, C.EC25519_LITTLE_ENDIAN))
 }
 
 func Wc_curve25519_import_public(pub []byte, key *C.struct_curve25519_key) int {
+    if len(pub) == 0 { return BAD_FUNC_ARG }
     return int(C.wc_curve25519_import_public_ex((*C.uchar)(unsafe.Pointer(&pub[0])),
                C.word32(len(pub)), key, C.EC25519_LITTLE_ENDIAN))
 }
 
 func Wc_curve25519_export_private_raw(key *C.struct_curve25519_key, priv []byte) int {
+    if len(priv) == 0 { return BAD_FUNC_ARG }
     cOutLen := C.word32(len(priv))
     return int(C.wc_curve25519_export_private_raw(key, (*C.uchar)(unsafe.Pointer(&priv[0])), &cOutLen))
 }
 
 func Wc_curve25519_shared_secret(privKey, pubKey *C.struct_curve25519_key, out []byte) int {
+    if len(out) == 0 { return BAD_FUNC_ARG }
     cOutLen := C.word32(len(out))
     return int(C.wc_curve25519_shared_secret_ex(privKey, pubKey, (*C.uchar)(unsafe.Pointer(&out[0])),
                &cOutLen, C.EC25519_LITTLE_ENDIAN))

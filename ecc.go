@@ -82,6 +82,7 @@ func Wc_ecc_set_rng(key *C.struct_ecc_key, rng *C.struct_WC_RNG) int {
 }
 
 func Wc_ecc_export_private_only(key *C.struct_ecc_key, out []byte, outLen *int) int {
+    if len(out) == 0 { return BAD_FUNC_ARG }
     cOutLen := C.word32(*outLen)
     ret := int(C.wc_ecc_export_private_only(key, (*C.byte)(unsafe.Pointer(&out[0])), &cOutLen))
     *outLen = int(cOutLen)
@@ -89,6 +90,7 @@ func Wc_ecc_export_private_only(key *C.struct_ecc_key, out []byte, outLen *int) 
 }
 
 func Wc_ecc_export_x963_ex(key *C.struct_ecc_key, out []byte, outLen *int, compressed int) int {
+    if len(out) == 0 { return BAD_FUNC_ARG }
     cOutLen := C.word32(*outLen)
     ret := int(C.wc_ecc_export_x963_ex(key, (*C.byte)(unsafe.Pointer(&out[0])), &cOutLen, C.int(compressed)))
     *outLen = int(cOutLen)
@@ -96,6 +98,7 @@ func Wc_ecc_export_x963_ex(key *C.struct_ecc_key, out []byte, outLen *int, compr
 }
 
 func Wc_ecc_import_private_key_ex(priv []byte, privSz int, pub []byte, pubSz int, key *C.struct_ecc_key, curveId int) int {
+    if len(priv) == 0 { return BAD_FUNC_ARG }
     privPtr := (*C.byte)(unsafe.Pointer(&priv[0]))
     var pubPtr *C.byte
 
@@ -107,10 +110,12 @@ func Wc_ecc_import_private_key_ex(priv []byte, privSz int, pub []byte, pubSz int
 }
 
 func Wc_ecc_import_x963_ex(pubKey []byte, pubSz int, key *C.struct_ecc_key, curveID int) int {
+	if len(pubKey) == 0 { return BAD_FUNC_ARG }
 	return int(C.wc_ecc_import_x963_ex((*C.uchar)(unsafe.Pointer(&pubKey[0])), C.word32(pubSz), key, C.int(curveID)))
 }
 
 func Wc_ecc_sign_hash(in []byte, inLen int, out []byte, outLen *int, rng *C.struct_WC_RNG, key *C.struct_ecc_key) int {
+    if len(in) == 0 || len(out) == 0 { return BAD_FUNC_ARG }
     cOutLen := C.word32(*outLen)
     ret := int(C.wc_ecc_sign_hash((*C.uchar)(unsafe.Pointer(&in[0])), C.word32(inLen),
                (*C.uchar)(unsafe.Pointer(&out[0])), &cOutLen, rng, key))
@@ -119,6 +124,7 @@ func Wc_ecc_sign_hash(in []byte, inLen int, out []byte, outLen *int, rng *C.stru
 }
 
 func Wc_ecc_verify_hash(sig []byte, sigLen int, hash []byte, hashLen int, res *int, key *C.struct_ecc_key) int {
+    if len(sig) == 0 || len(hash) == 0 { return BAD_FUNC_ARG }
     cRes := C.int(*res)
     ret := int(C.wc_ecc_verify_hash((*C.uchar)(unsafe.Pointer(&sig[0])), C.word32(sigLen),
                (*C.uchar)(unsafe.Pointer(&hash[0])), C.word32(hashLen), &cRes, key))
@@ -131,6 +137,7 @@ func Wc_ecc_check_key(key *C.struct_ecc_key) int {
 }
 
 func Wc_ecc_shared_secret(privKey, pubKey *C.struct_ecc_key, out []byte, outLen *int) int {
+    if len(out) == 0 { return BAD_FUNC_ARG }
     cOutLen := C.word32(*outLen)
     ret := int(C.wc_ecc_shared_secret(privKey, pubKey, (*C.uchar)(unsafe.Pointer(&out[0])), &cOutLen))
     *outLen = int(cOutLen)

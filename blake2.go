@@ -68,9 +68,7 @@ func Wc_InitBlake2s_WithKey(blake2s *C.struct_Blake2s, digestSz int, key []byte)
 }
 
 func Wc_Blake2sUpdate(blake2s *C.struct_Blake2s, in []byte, sz int) int {
-    if sz < 0 || sz > len(in) {
-        return BAD_FUNC_ARG
-    }
+    if sz < 0 || sz > len(in) { return BAD_FUNC_ARG }
     var sanIn *C.uchar
     if len(in) > 0 {
         sanIn = (*C.uchar)(unsafe.Pointer(&in[0]))
@@ -82,12 +80,8 @@ func Wc_Blake2sUpdate(blake2s *C.struct_Blake2s, in []byte, sz int) int {
 }
 
 func Wc_Blake2sFinal(blake2s *C.struct_Blake2s, out []byte, requestSz int) int {
-    if requestSz < 0 || requestSz > len(out) {
-        return BAD_FUNC_ARG
-    }
-    if len(out) == 0 {
-        return BAD_FUNC_ARG
-    }
+    if requestSz < 0 || requestSz > len(out) { return BAD_FUNC_ARG }
+    if len(out) == 0 { return BAD_FUNC_ARG }
     return int(C.wc_Blake2sFinal(blake2s, (*C.uchar)(unsafe.Pointer(&out[0])),
                C.word32(requestSz)))
 }
