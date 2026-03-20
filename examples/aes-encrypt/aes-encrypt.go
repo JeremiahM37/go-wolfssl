@@ -22,11 +22,12 @@
 package main
 
 import (
-    "os"
+    "crypto/subtle"
     "fmt"
-    "golang.org/x/term"
+    "os"
     "strconv"
     wolfSSL "github.com/wolfssl/go-wolfssl"
+    "golang.org/x/term"
 )
 
 const SALT_SIZE = 8
@@ -145,12 +146,22 @@ func AesEncrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
         println(err.Error())
         os.Exit(1)
     }
+    defer out.Close()
 
     _, err = out.Write(salt[0:SALT_SIZE])
+    if err != nil {
+        println(err.Error())
+        os.Exit(1)
+    }
     _, err = out.Write(iv[0:wolfSSL.AES_BLOCK_SIZE])
+    if err != nil {
+        println(err.Error())
+        os.Exit(1)
+    }
     _, err = out.Write(output[0:length])
     if err != nil {
         println(err.Error())
+        os.Exit(1)
     }
 
     ret = wolfSSL.Wc_FreeRng(&rng)
@@ -226,15 +237,38 @@ func AesDecrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
         os.Exit(1)
     }
 
+    if salt[0] != 0 {
+        if length == 0 {
+            fmt.Println("File too short or corrupted")
+            os.Exit(1)
+        }
+        padLen := int(output[length-1])
+        good := subtle.ConstantTimeLessOrEq(1, padLen) &
+            subtle.ConstantTimeLessOrEq(padLen, wolfSSL.AES_BLOCK_SIZE)
+        safePadLen := subtle.ConstantTimeSelect(good, padLen, 0)
+        for j := 0; j < wolfSSL.AES_BLOCK_SIZE; j++ {
+            eq := subtle.ConstantTimeByteEq(output[length-1-j], byte(padLen))
+            useByte := subtle.ConstantTimeLessOrEq(j+1, safePadLen)
+            good &= subtle.ConstantTimeSelect(useByte, eq, 1)
+        }
+        if good != 1 {
+            fmt.Println("Invalid padding")
+            os.Exit(1)
+        }
+        length -= padLen
+    }
+
     out, err := os.Create(outFile)
     if err != nil {
         println(err.Error())
         os.Exit(1)
     }
+    defer out.Close()
 
     _, err = out.Write(output[0:length])
     if err != nil {
         println(err.Error())
+        os.Exit(1)
     }
 
     ret = wolfSSL.Wc_FreeRng(&rng)
