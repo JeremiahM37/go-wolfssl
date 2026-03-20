@@ -233,8 +233,10 @@ func WolfSSL_get_error(ssl *C.struct_WOLFSSL, ret int) int {
     return int(C.wolfSSL_get_error(ssl, C.int(ret)))
 }
 
+// data parameter is unused; kept for API compatibility.
 func WolfSSL_ERR_error_string(ret int, data []byte) string {
-    return C.GoString(C.wolfSSL_ERR_error_string(C.ulong(ret), (*C.char)(unsafe.Pointer(&data[0]))))
+    var buf [C.WOLFSSL_MAX_ERROR_SZ]C.char
+    return C.GoString(C.wolfSSL_ERR_error_string(C.ulong(ret), &buf[0]))
 }
 
 func WolfSSL_get_cipher_name(ssl *C.struct_WOLFSSL) string {
