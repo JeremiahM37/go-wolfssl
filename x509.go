@@ -58,6 +58,7 @@ package wolfSSL
 // static void wolfSSL_ASN1_OBJECT_free(WOLFSSL_ASN1_OBJECT* obj) { (void)obj; }
 // static WOLFSSL_ASN1_OBJECT* wolfSSL_OBJ_txt2obj(const char* s, int no_name) { return NULL; }
 // static int wolfSSL_OBJ_cmp(const WOLFSSL_ASN1_OBJECT* a, const WOLFSSL_ASN1_OBJECT* b) { return -174; }
+// static void wolfSSL_OPENSSL_free(void* p) { (void)p; }
 // #endif
 import "C"
 import (
@@ -173,6 +174,7 @@ func WolfSSL_i2d_X509(x509 *WOLFSSL_X509, out *[]byte) int {
 	result := int(C.wolfSSL_i2d_X509((*C.struct_WOLFSSL_X509)(x509), &outPtr))
 	if result > 0 && outPtr != nil {
 		*out = C.GoBytes(unsafe.Pointer(outPtr), C.int(result))
+		C.wolfSSL_OPENSSL_free(unsafe.Pointer(outPtr))
 	}
 	return result
 }
