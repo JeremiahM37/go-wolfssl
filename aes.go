@@ -180,15 +180,9 @@ func Wc_AesGcmEncrypt(aes *C.struct_Aes, outCipher, inPlain, inIv, outAuthTag, i
     var sanInPlain *C.uchar
     if len(inPlain) > 0 {
         sanInPlain = (*C.uchar)(unsafe.Pointer(&inPlain[0]))
-    } else {
-        emptyStringArray := []byte("")
-        sanInPlain = (*C.uchar)(unsafe.Pointer(&emptyStringArray))
     }
     var sanOutCipher *C.uchar
     if len(outCipher) > 0 {
-        sanOutCipher = (*C.uchar)(unsafe.Pointer(&outCipher[0]))
-    } else {
-        outCipher = make([]byte, AES_BLOCK_SIZE)
         sanOutCipher = (*C.uchar)(unsafe.Pointer(&outCipher[0]))
     }
     ret := int(C.wc_AesGcmEncrypt(aes, sanOutCipher, sanInPlain, C.word32(len(inPlain)),
@@ -207,12 +201,14 @@ func Wc_AesGcmDecrypt(aes *C.struct_Aes, outPlain, inCipher, inIv, inAuthTag, in
     var sanInCipher *C.uchar
     if len(inCipher) > 0 {
         sanInCipher = (*C.uchar)(unsafe.Pointer(&inCipher[0]))
-    } else {
-        emptyStringArray := []byte("")
-        sanInCipher = (*C.uchar)(unsafe.Pointer(&emptyStringArray))
     }
 
-    ret := int(C.wc_AesGcmDecrypt(aes, (*C.uchar)(unsafe.Pointer(&outPlain[0])), sanInCipher, C.word32(len(inCipher)),
+    var sanOutPlain *C.uchar
+    if len(outPlain) > 0 {
+        sanOutPlain = (*C.uchar)(unsafe.Pointer(&outPlain[0]))
+    }
+
+    ret := int(C.wc_AesGcmDecrypt(aes, sanOutPlain, sanInCipher, C.word32(len(inCipher)),
                (*C.uchar)(unsafe.Pointer(&inIv[0])), C.word32(len(inIv)),
                (*C.uchar)(unsafe.Pointer(&inAuthTag[0])), C.word32(len(inAuthTag)), sanInAAD, C.word32(len(inAAD))))
     return ret
