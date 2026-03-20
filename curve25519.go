@@ -105,12 +105,12 @@ func Wc_curve25519_import_public(pub []byte, key *C.struct_curve25519_key) int {
 }
 
 func Wc_curve25519_export_private_raw(key *C.struct_curve25519_key, priv []byte) int {
-    outLen := len(priv)
-    return int(C.wc_curve25519_export_private_raw(key, (*C.uchar)(unsafe.Pointer(&priv[0])), (*C.word32)(unsafe.Pointer(&outLen))))
+    cOutLen := C.word32(len(priv))
+    return int(C.wc_curve25519_export_private_raw(key, (*C.uchar)(unsafe.Pointer(&priv[0])), &cOutLen))
 }
 
 func Wc_curve25519_shared_secret(privKey, pubKey *C.struct_curve25519_key, out []byte) int {
-    outLen := len(out)
+    cOutLen := C.word32(len(out))
     return int(C.wc_curve25519_shared_secret_ex(privKey, pubKey, (*C.uchar)(unsafe.Pointer(&out[0])),
-               (*C.word32)(unsafe.Pointer(&outLen)), C.EC25519_LITTLE_ENDIAN))
+               &cOutLen, C.EC25519_LITTLE_ENDIAN))
 }

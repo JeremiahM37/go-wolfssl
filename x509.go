@@ -124,11 +124,17 @@ func WolfSSL_X509_load_certificate_buffer(buff []byte, buffSz int, certType int)
 }
 
 func WolfSSL_X509_get_pubkey_buffer(cert *WOLFSSL_X509, out []byte, outLen *int) int {
+	if outLen == nil {
+		return BAD_FUNC_ARG
+	}
 	var outPtr *C.uchar
 	if len(out) > 0 {
 		outPtr = (*C.uchar)(unsafe.Pointer(&out[0]))
 	}
-	return int(C.wolfSSL_X509_get_pubkey_buffer(cert, outPtr, (*C.int)(unsafe.Pointer(outLen))))
+	cOutLen := C.int(*outLen)
+	ret := int(C.wolfSSL_X509_get_pubkey_buffer(cert, outPtr, &cOutLen))
+	*outLen = int(cOutLen)
+	return ret
 }
 
 func WolfSSL_BIO_new_mem_buf(buf []byte, bufLen int) *WOLFSSL_BIO {
