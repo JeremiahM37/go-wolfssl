@@ -58,11 +58,15 @@ package wolfSSL
 // static void wolfSSL_ASN1_OBJECT_free(WOLFSSL_ASN1_OBJECT* obj) { (void)obj; }
 // static WOLFSSL_ASN1_OBJECT* wolfSSL_OBJ_txt2obj(const char* s, int no_name) { return NULL; }
 // static int wolfSSL_OBJ_cmp(const WOLFSSL_ASN1_OBJECT* a, const WOLFSSL_ASN1_OBJECT* b) { return -174; }
+// static void wolfSSL_OPENSSL_free(void* p) { (void)p; }
 // #endif
 import "C"
 import (
+    "sync"
     "unsafe"
 )
+
+var bioBufMap sync.Map
 
 type WOLFSSL_X509 = C.struct_WOLFSSL_X509
 type WOLFSSL_BIO = C.struct_WOLFSSL_BIO
@@ -124,23 +128,45 @@ func WolfSSL_X509_load_certificate_buffer(buff []byte, buffSz int, certType int)
 }
 
 func WolfSSL_X509_get_pubkey_buffer(cert *WOLFSSL_X509, out []byte, outLen *int) int {
+	if outLen == nil {
+		return BAD_FUNC_ARG
+	}
 	var outPtr *C.uchar
 	if len(out) > 0 {
 		outPtr = (*C.uchar)(unsafe.Pointer(&out[0]))
 	}
-	return int(C.wolfSSL_X509_get_pubkey_buffer(cert, outPtr, (*C.int)(unsafe.Pointer(outLen))))
+	cOutLen := C.int(*outLen)
+	ret := int(C.wolfSSL_X509_get_pubkey_buffer(cert, outPtr, &cOutLen))
+	*outLen = int(cOutLen)
+	return ret
 }
 
 func WolfSSL_BIO_new_mem_buf(buf []byte, bufLen int) *WOLFSSL_BIO {
-	var bufPtr *C.char
-	if bufLen > 0 && bufLen <= len(buf) {
-		bufPtr = (*C.char)(unsafe.Pointer(&buf[0]))
+	if bufLen <= 0 || bufLen > len(buf) {
+		return nil
 	}
-	return (*WOLFSSL_BIO)(C.wolfSSL_BIO_new_mem_buf(unsafe.Pointer(bufPtr), C.int(bufLen)))
+	cBuf := C.CBytes(buf[:bufLen])
+	bio := (*WOLFSSL_BIO)(C.wolfSSL_BIO_new_mem_buf(cBuf, C.int(bufLen)))
+	if bio != nil {
+		bioBufMap.Store(unsafe.Pointer(bio), cBuf)
+	} else {
+		C.free(cBuf)
+	}
+	return bio
 }
 
 func WolfSSL_BIO_free(bio *WOLFSSL_BIO) int {
-	return int(C.wolfSSL_BIO_free((*C.struct_WOLFSSL_BIO)(bio)))
+	if bio == nil {
+		return 1
+	}
+	cBuf, hasBuf := bioBufMap.LoadAndDelete(unsafe.Pointer(bio))
+	// Free the BIO before releasing the backing C buffer so teardown never
+	// observes freed backing storage.
+	ret := int(C.wolfSSL_BIO_free((*C.struct_WOLFSSL_BIO)(bio)))
+	if hasBuf {
+		C.free(cBuf.(unsafe.Pointer))
+	}
+	return ret
 }
 
 func WolfSSL_i2d_X509(x509 *WOLFSSL_X509, out *[]byte) int {
@@ -148,6 +174,7 @@ func WolfSSL_i2d_X509(x509 *WOLFSSL_X509, out *[]byte) int {
 	result := int(C.wolfSSL_i2d_X509((*C.struct_WOLFSSL_X509)(x509), &outPtr))
 	if result > 0 && outPtr != nil {
 		*out = C.GoBytes(unsafe.Pointer(outPtr), C.int(result))
+		C.wolfSSL_OPENSSL_free(unsafe.Pointer(outPtr))
 	}
 	return result
 }
@@ -225,4 +252,3 @@ func WolfSSL_OBJ_txt2obj(s string, noName int) *WOLFSSL_ASN1_OBJECT {
 func WolfSSL_OBJ_cmp(a *WOLFSSL_ASN1_OBJECT, b *WOLFSSL_ASN1_OBJECT) int {
 	return int(C.wolfSSL_OBJ_cmp((*C.struct_WOLFSSL_ASN1_OBJECT)(a), (*C.struct_WOLFSSL_ASN1_OBJECT)(b)))
 }
-

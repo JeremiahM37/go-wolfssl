@@ -59,11 +59,16 @@ func Wc_InitBlake2s(blake2s *C.struct_Blake2s, digestSz int) int {
 }
 
 func Wc_InitBlake2s_WithKey(blake2s *C.struct_Blake2s, digestSz int, key []byte) int {
+    var sanKey *C.uchar
+    if len(key) > 0 {
+        sanKey = (*C.uchar)(unsafe.Pointer(&key[0]))
+    }
     return int(C.wc_InitBlake2s_WithKey(blake2s, C.word32(digestSz),
-               (*C.uchar)(unsafe.Pointer(&key[0])), C.word32(len(key))))
+               sanKey, C.word32(len(key))))
 }
 
 func Wc_Blake2sUpdate(blake2s *C.struct_Blake2s, in []byte, sz int) int {
+    if sz < 0 || sz > len(in) { return BAD_FUNC_ARG }
     var sanIn *C.uchar
     if len(in) > 0 {
         sanIn = (*C.uchar)(unsafe.Pointer(&in[0]))
@@ -75,28 +80,40 @@ func Wc_Blake2sUpdate(blake2s *C.struct_Blake2s, in []byte, sz int) int {
 }
 
 func Wc_Blake2sFinal(blake2s *C.struct_Blake2s, out []byte, requestSz int) int {
+    if requestSz < 0 || requestSz > len(out) { return BAD_FUNC_ARG }
+    if len(out) == 0 { return BAD_FUNC_ARG }
     return int(C.wc_Blake2sFinal(blake2s, (*C.uchar)(unsafe.Pointer(&out[0])),
                C.word32(requestSz)))
 }
 
 func Wc_Blake2s_HMAC(out []byte, in, key []byte, outlen int) {
+    zeroMemory(out)
+
     var state Blake2s
     var x_key [WC_BLAKE2S_256_BLOCK_SIZE]byte
     var i_hash [WC_BLAKE2S_256_DIGEST_SIZE]byte
 
+    defer zeroMemory((*[unsafe.Sizeof(Blake2s{})]byte)(unsafe.Pointer(&state))[:])
+    defer zeroMemory(i_hash[:])
+    defer zeroMemory(x_key[:])
+
     i := 0
+    ret := 0
 
     inlen := len(in)
     keylen := len(key)
 
-    if outlen != WC_BLAKE2S_256_DIGEST_SIZE {
-       return
-   }
+    if outlen != WC_BLAKE2S_256_DIGEST_SIZE || len(out) < outlen {
+        return
+    }
 
     if keylen > WC_BLAKE2S_256_BLOCK_SIZE {
-        Wc_InitBlake2s(&state, WC_BLAKE2S_256_DIGEST_SIZE)
-        Wc_Blake2sUpdate(&state, key, keylen)
-        Wc_Blake2sFinal(&state, x_key[:], 0)
+        ret = Wc_InitBlake2s(&state, WC_BLAKE2S_256_DIGEST_SIZE)
+        if ret != 0 { return }
+        ret = Wc_Blake2sUpdate(&state, key, keylen)
+        if ret != 0 { return }
+        ret = Wc_Blake2sFinal(&state, x_key[:], 0)
+        if ret != 0 { return }
     } else {
         copy(x_key[:], key)
         for i = keylen; i < WC_BLAKE2S_256_BLOCK_SIZE; i++ {
@@ -108,21 +125,27 @@ func Wc_Blake2s_HMAC(out []byte, in, key []byte, outlen int) {
         x_key[i] ^= 0x36
     }
 
-    Wc_InitBlake2s(&state, WC_BLAKE2S_256_DIGEST_SIZE)
-    Wc_Blake2sUpdate(&state, x_key[:], WC_BLAKE2S_256_BLOCK_SIZE)
-    Wc_Blake2sUpdate(&state, in, inlen)
-    Wc_Blake2sFinal(&state, i_hash[:], 0)
+    ret = Wc_InitBlake2s(&state, WC_BLAKE2S_256_DIGEST_SIZE)
+    if ret != 0 { return }
+    ret = Wc_Blake2sUpdate(&state, x_key[:], WC_BLAKE2S_256_BLOCK_SIZE)
+    if ret != 0 { return }
+    ret = Wc_Blake2sUpdate(&state, in, inlen)
+    if ret != 0 { return }
+    ret = Wc_Blake2sFinal(&state, i_hash[:], 0)
+    if ret != 0 { return }
 
     for i = 0; i < WC_BLAKE2S_256_BLOCK_SIZE; i++ {
         x_key[i] ^= 0x5c ^ 0x36
     }
 
-    Wc_InitBlake2s(&state, WC_BLAKE2S_256_DIGEST_SIZE)
-    Wc_Blake2sUpdate(&state, x_key[:], WC_BLAKE2S_256_BLOCK_SIZE)
-    Wc_Blake2sUpdate(&state, i_hash[:], WC_BLAKE2S_256_DIGEST_SIZE)
-    Wc_Blake2sFinal(&state, i_hash[:], 0)
+    ret = Wc_InitBlake2s(&state, WC_BLAKE2S_256_DIGEST_SIZE)
+    if ret != 0 { return }
+    ret = Wc_Blake2sUpdate(&state, x_key[:], WC_BLAKE2S_256_BLOCK_SIZE)
+    if ret != 0 { return }
+    ret = Wc_Blake2sUpdate(&state, i_hash[:], WC_BLAKE2S_256_DIGEST_SIZE)
+    if ret != 0 { return }
+    ret = Wc_Blake2sFinal(&state, i_hash[:], 0)
+    if ret != 0 { return }
 
     copy(out[:], i_hash[:])
-    zeroMemory(i_hash[:])
-    zeroMemory(x_key[:])
 }

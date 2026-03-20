@@ -214,10 +214,18 @@ func WolfSSL_accept(ssl *C.struct_WOLFSSL) int {
 }
 
 func WolfSSL_read(ssl *C.struct_WOLFSSL, data []byte, sz uintptr) int {
+    if sz > uintptr(len(data)) {
+        sz = uintptr(len(data))
+    }
+    if sz == 0 { return 0 }
     return int(C.wolfSSL_read(ssl, unsafe.Pointer(&data[0]), C.int(sz)))
 }
 
 func WolfSSL_write(ssl *C.struct_WOLFSSL, data []byte, sz uintptr) int {
+    if sz > uintptr(len(data)) {
+        sz = uintptr(len(data))
+    }
+    if sz == 0 { return 0 }
     return int(C.wolfSSL_write(ssl, unsafe.Pointer(&data[0]), C.int(sz)))
 }
 
@@ -225,8 +233,10 @@ func WolfSSL_get_error(ssl *C.struct_WOLFSSL, ret int) int {
     return int(C.wolfSSL_get_error(ssl, C.int(ret)))
 }
 
+// data parameter is unused; kept for API compatibility.
 func WolfSSL_ERR_error_string(ret int, data []byte) string {
-    return C.GoString(C.wolfSSL_ERR_error_string(C.ulong(ret), (*C.char)(unsafe.Pointer(&data[0]))))
+    var buf [C.WOLFSSL_MAX_ERROR_SZ]C.char
+    return C.GoString(C.wolfSSL_ERR_error_string(C.ulong(ret), &buf[0]))
 }
 
 func WolfSSL_get_cipher_name(ssl *C.struct_WOLFSSL) string {

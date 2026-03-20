@@ -21,7 +21,14 @@
 
 package wolfSSL
 
+// #include <wolfssl/options.h>
+// #include <wolfssl/wolfcrypt/error-crypt.h>
+import "C"
+
+const BAD_FUNC_ARG = int(C.BAD_FUNC_ARG)
+
 func ConstantCompare(a, b []byte, length int) int {
+    if length < 0 || length > len(a) || length > len(b) { return 0 }
     var result byte = 0
     for i := 0; i < length; i++ {
         result |= a[i] ^ b[i]

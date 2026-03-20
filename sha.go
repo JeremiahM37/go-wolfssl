@@ -39,6 +39,7 @@ func Wc_Sha256Free(sha *C.struct_wc_Sha256) {
 }
 
 func Wc_Sha256Update(sha *C.struct_wc_Sha256, in []byte, inSz int) int {
+    if inSz < 0 || inSz > len(in) { return BAD_FUNC_ARG }
     var sanIn *C.uchar
     if len(in) > 0 {
         sanIn = (*C.uchar)(unsafe.Pointer(&in[0]))

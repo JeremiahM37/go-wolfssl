@@ -28,6 +28,7 @@ package wolfSSL
 // #include <wolfssl/wolfcrypt/pwdbased.h>
 // #ifdef NO_AES
 // #define AES_BLOCK_SIZE   1
+// #define AES_IV_SIZE      1
 // #define AES_128_KEY_SIZE 1
 // #define AES_192_KEY_SIZE 1
 // #define AES_256_KEY_SIZE 1
@@ -36,22 +37,37 @@ package wolfSSL
 // typedef struct Aes {} Aes;
 // int wc_AesInit(Aes* aes, void* heap, int devid) {
 //      return -174;
-//  }
-// int wc_AesFree(Aes* aes) {
-//      return -174;
-//  }
+// }
+// void wc_AesFree(Aes* aes) {
+//      return;
+// }
 // int wc_AesSetKey(Aes* aes, const byte* key, word32 len,
 //                 const byte* iv, int dir) {
 //      return -174;
 // }
-// #ifndef HAVE_AES_CBC
 // int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
 //      return -174;
 // }
 // int wc_AesCbcDecrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
 //      return -174;
 // }
-// #endif
+// int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len) {
+//      return -174;
+// }
+// int wc_AesGcmEncrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
+// }
+// int wc_AesGcmDecrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      const byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
+// }
+// Aes* wc_AesAllocAligned(void) { return NULL; }
+// void wc_AesFreeAllocAligned(Aes* ptr) { (void)ptr; }
 // #elif defined(_WIN32)
 // #include <stdlib.h>
 // #include <malloc.h>
@@ -73,6 +89,31 @@ package wolfSSL
 // }
 // void wc_AesFreeAllocAligned(Aes* ptr) {
 //     free(ptr);
+// }
+// #endif
+// #if !defined(NO_AES) && !defined(HAVE_AES_CBC)
+// int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
+//      return -174;
+// }
+// int wc_AesCbcDecrypt(Aes* aes, byte* out, const byte* in, word32 sz) {
+//      return -174;
+// }
+// #endif
+// #if !defined(NO_AES) && !defined(HAVE_AESGCM)
+// int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len) {
+//      return -174;
+// }
+// int wc_AesGcmEncrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
+// }
+// int wc_AesGcmDecrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+//                      const byte* iv, word32 ivSz,
+//                      const byte* authTag, word32 authTagSz,
+//                      const byte* authIn, word32 authInSz) {
+//      return -174;
 // }
 // #endif
 import "C"
@@ -111,25 +152,37 @@ func Wc_AesFree(aes *C.struct_Aes) {
 }
 
 func Wc_AesSetKey(aes *C.struct_Aes, key []byte, length int, iv []byte, dir int) int {
+    if length < 0 || length > len(key) { return BAD_FUNC_ARG }
+    if len(key) == 0 || len(iv) < AES_IV_SIZE { return BAD_FUNC_ARG }
     return int(C.wc_AesSetKey(aes, (*C.uchar)(unsafe.Pointer(&key[0])), C.word32(length),
                (*C.uchar)(unsafe.Pointer(&iv[0])), C.int(dir)))
 }
 
 func Wc_AesCbcEncrypt(aes *C.struct_Aes, out []byte, in []byte, sz int) int {
+    if sz < 0 || sz > len(in) || sz > len(out) { return BAD_FUNC_ARG }
+    if sz == 0 { return 0 }
+    if sz%AES_BLOCK_SIZE != 0 { return BAD_FUNC_ARG }
     return int(C.wc_AesCbcEncrypt(aes, (*C.uchar)(unsafe.Pointer(&out[0])),
                (*C.uchar)(unsafe.Pointer(&in[0])), C.word32(sz)))
 }
 
 func Wc_AesCbcDecrypt(aes *C.struct_Aes, out []byte, in []byte, sz int) int {
+    if sz < 0 || sz > len(in) || sz > len(out) { return BAD_FUNC_ARG }
+    if sz == 0 { return 0 }
+    if sz%AES_BLOCK_SIZE != 0 { return BAD_FUNC_ARG }
     return int(C.wc_AesCbcDecrypt(aes, (*C.uchar)(unsafe.Pointer(&out[0])),
                (*C.uchar)(unsafe.Pointer(&in[0])), C.word32(sz)))
 }
 
 func Wc_AesGcmSetKey(aes *C.struct_Aes, key []byte, length int) int {
+    if length < 0 || length > len(key) { return BAD_FUNC_ARG }
+    if len(key) == 0 { return BAD_FUNC_ARG }
     return int(C.wc_AesGcmSetKey(aes, (*C.uchar)(unsafe.Pointer(&key[0])), C.word32(length)))
 }
 
 func Wc_AesGcmEncrypt(aes *C.struct_Aes, outCipher, inPlain, inIv, outAuthTag, inAAD []byte) int {
+    if len(inIv) == 0 || len(outAuthTag) == 0 { return BAD_FUNC_ARG }
+    if len(outCipher) < len(inPlain) { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
@@ -139,15 +192,9 @@ func Wc_AesGcmEncrypt(aes *C.struct_Aes, outCipher, inPlain, inIv, outAuthTag, i
     var sanInPlain *C.uchar
     if len(inPlain) > 0 {
         sanInPlain = (*C.uchar)(unsafe.Pointer(&inPlain[0]))
-    } else {
-        emptyStringArray := []byte("")
-        sanInPlain = (*C.uchar)(unsafe.Pointer(&emptyStringArray))
     }
     var sanOutCipher *C.uchar
     if len(outCipher) > 0 {
-        sanOutCipher = (*C.uchar)(unsafe.Pointer(&outCipher[0]))
-    } else {
-        outCipher = make([]byte, AES_BLOCK_SIZE)
         sanOutCipher = (*C.uchar)(unsafe.Pointer(&outCipher[0]))
     }
     ret := int(C.wc_AesGcmEncrypt(aes, sanOutCipher, sanInPlain, C.word32(len(inPlain)),
@@ -157,6 +204,8 @@ func Wc_AesGcmEncrypt(aes *C.struct_Aes, outCipher, inPlain, inIv, outAuthTag, i
 }
 
 func Wc_AesGcmDecrypt(aes *C.struct_Aes, outPlain, inCipher, inIv, inAuthTag, inAAD []byte) int {
+    if len(inIv) == 0 || len(inAuthTag) == 0 { return BAD_FUNC_ARG }
+    if len(outPlain) < len(inCipher) { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
@@ -166,12 +215,14 @@ func Wc_AesGcmDecrypt(aes *C.struct_Aes, outPlain, inCipher, inIv, inAuthTag, in
     var sanInCipher *C.uchar
     if len(inCipher) > 0 {
         sanInCipher = (*C.uchar)(unsafe.Pointer(&inCipher[0]))
-    } else {
-        emptyStringArray := []byte("")
-        sanInCipher = (*C.uchar)(unsafe.Pointer(&emptyStringArray))
     }
 
-    ret := int(C.wc_AesGcmDecrypt(aes, (*C.uchar)(unsafe.Pointer(&outPlain[0])), sanInCipher, C.word32(len(inCipher)),
+    var sanOutPlain *C.uchar
+    if len(outPlain) > 0 {
+        sanOutPlain = (*C.uchar)(unsafe.Pointer(&outPlain[0]))
+    }
+
+    ret := int(C.wc_AesGcmDecrypt(aes, sanOutPlain, sanInCipher, C.word32(len(inCipher)),
                (*C.uchar)(unsafe.Pointer(&inIv[0])), C.word32(len(inIv)),
                (*C.uchar)(unsafe.Pointer(&inAuthTag[0])), C.word32(len(inAuthTag)), sanInAAD, C.word32(len(inAAD))))
     return ret
@@ -194,6 +245,9 @@ func Wc_AesGcm_Appended_Tag_Encrypt(aes *C.struct_Aes, outCipher, inPlain, inIv,
 }
 
 func Wc_AesGcm_Appended_Tag_Decrypt(aes *C.struct_Aes, outPlain, inCipher, inIv, inAAD []byte) int {
+    if len(inCipher) < AES_BLOCK_SIZE {
+        return BAD_FUNC_ARG
+    }
     var inAuthTag [AES_BLOCK_SIZE]byte
     copy(inAuthTag[:], inCipher[(len(inCipher)-AES_BLOCK_SIZE):])
     ret := Wc_AesGcmDecrypt(aes, outPlain, inCipher[:(len(inCipher)-AES_BLOCK_SIZE)], inIv, inAuthTag[:], inAAD)
@@ -202,7 +256,22 @@ func Wc_AesGcm_Appended_Tag_Decrypt(aes *C.struct_Aes, outPlain, inCipher, inIv,
 
 /* TODO: Move function below to appropriate .go file */
 func Wc_PBKDF2(out []byte, pwd []byte, pLen int, salt []byte, saltLen int, iter int, kLen int, typeH int) int {
-    return int(C.wc_PBKDF2((*C.uchar)(unsafe.Pointer(&out[0])), (*C.uchar)(unsafe.Pointer(&pwd[0])), C.int(pLen),
-               (*C.uchar)(unsafe.Pointer(&salt[0])), C.int(saltLen), C.int(iter), C.int(kLen), C.int(typeH)))
+    if pLen < 0 || saltLen < 0 || kLen < 0 ||
+       pLen > len(pwd) || saltLen > len(salt) || kLen > len(out) {
+        return BAD_FUNC_ARG
+    }
+    var outPtr *C.uchar
+    if len(out) > 0 {
+        outPtr = (*C.uchar)(unsafe.Pointer(&out[0]))
+    }
+    var pwdPtr *C.uchar
+    if len(pwd) > 0 {
+        pwdPtr = (*C.uchar)(unsafe.Pointer(&pwd[0]))
+    }
+    var saltPtr *C.uchar
+    if len(salt) > 0 {
+        saltPtr = (*C.uchar)(unsafe.Pointer(&salt[0]))
+    }
+    return int(C.wc_PBKDF2(outPtr, pwdPtr, C.int(pLen),
+               saltPtr, C.int(saltLen), C.int(iter), C.int(kLen), C.int(typeH)))
 }
-

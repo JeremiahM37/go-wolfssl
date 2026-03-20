@@ -137,6 +137,9 @@ func Wc_ChaCha20Poly1305_Appended_Tag_Encrypt(inKey, inIv, inAAD, inPlain, outCi
 }
 
 func Wc_ChaCha20Poly1305_Appended_Tag_Decrypt(inKey, inIv, inAAD, inCipher,  outPlain []byte) int {
+    if len(inCipher) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE {
+        return BAD_FUNC_ARG
+    }
     var inAuthTag [CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE]byte
     copy(inAuthTag[:], inCipher[(len(inCipher)-CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE):])
     ret := Wc_ChaCha20Poly1305_Decrypt(inKey, inIv, inAAD, inCipher[:(len(inCipher)-CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE)], inAuthTag[:] , outPlain)
