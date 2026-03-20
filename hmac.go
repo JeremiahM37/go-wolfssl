@@ -71,12 +71,7 @@ func Wc_HmacFree(hmac *C.struct_Hmac) {
 }
 
 func Wc_HmacSetKey(hmac *C.struct_Hmac, hash int, key []byte, keySz int) int {
-<<<<<<< HEAD
-=======
-    if keySz < 0 || keySz > len(key) {
-        return BAD_FUNC_ARG
-    }
->>>>>>> 5bd3478 (fixup! Handle nil slices in Wc_HKDF)
+    if keySz < 0 || keySz > len(key) { return BAD_FUNC_ARG }
     var sanKey *C.uchar
     if len(key) > 0 {
         sanKey = (*C.uchar)(unsafe.Pointer(&key[0]))
@@ -87,12 +82,7 @@ func Wc_HmacSetKey(hmac *C.struct_Hmac, hash int, key []byte, keySz int) int {
 }
 
 func Wc_HmacUpdate(hmac *C.struct_Hmac, in []byte, inSz int) int {
-<<<<<<< HEAD
-=======
-    if inSz < 0 || inSz > len(in) {
-        return BAD_FUNC_ARG
-    }
->>>>>>> 5bd3478 (fixup! Handle nil slices in Wc_HKDF)
+    if inSz < 0 || inSz > len(in) { return BAD_FUNC_ARG }
     var sanIn *C.uchar
     if len(in) > 0 {
         sanIn = (*C.uchar)(unsafe.Pointer(&in[0]))
@@ -124,21 +114,8 @@ func Wc_HKDF(hashType int, inputKey []byte, inputKeySz int, salt []byte,
         infoPtr = (*C.uchar)(unsafe.Pointer(&info[0]))
     }
     return int(C.wc_HKDF(C.int(hashType), (*C.uchar)(unsafe.Pointer(&inputKey[0])),
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 84ab153 (fixup! Handle nil slices in Wc_HKDF)
                C.word32(inputKeySz), saltPtr,
                C.word32(saltSz), infoPtr,
                C.word32(infoSz), (*C.uchar)(unsafe.Pointer(&out[0])),
                C.word32(outSz)))
-<<<<<<< HEAD
-=======
-        C.word32(inputKeySz), saltPtr,
-        C.word32(saltSz), infoPtr,
-        C.word32(infoSz), (*C.uchar)(unsafe.Pointer(&out[0])),
-        C.word32(outSz)))
->>>>>>> 5bd3478 (fixup! Handle nil slices in Wc_HKDF)
-=======
->>>>>>> 84ab153 (fixup! Handle nil slices in Wc_HKDF)
 }

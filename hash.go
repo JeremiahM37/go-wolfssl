@@ -65,26 +65,56 @@ const WC_SHA512_DIGEST_SIZE = int(C.WC_SHA512_DIGEST_SIZE)
 const WC_SHA256 = int(C.WC_SHA256)
 
 func Wc_Md5Hash(input []byte, inputSz int, output []byte) int {
-    return int(C.wc_Md5Hash((*C.uchar)(unsafe.Pointer(&input[0])),
+    if inputSz < 0 || inputSz > len(input) { return BAD_FUNC_ARG }
+    if len(output) < WC_MD5_DIGEST_SIZE { return BAD_FUNC_ARG }
+    var sanIn *C.uchar
+    if len(input) > 0 {
+        sanIn = (*C.uchar)(unsafe.Pointer(&input[0]))
+    }
+    return int(C.wc_Md5Hash(sanIn,
                C.word32(inputSz), (*C.uchar)(unsafe.Pointer(&output[0]))))
 }
 
 func Wc_ShaHash(input []byte, inputSz int, output []byte) int {
-    return int(C.wc_ShaHash((*C.uchar)(unsafe.Pointer(&input[0])),
+    if inputSz < 0 || inputSz > len(input) { return BAD_FUNC_ARG }
+    if len(output) < WC_SHA_DIGEST_SIZE { return BAD_FUNC_ARG }
+    var sanIn *C.uchar
+    if len(input) > 0 {
+        sanIn = (*C.uchar)(unsafe.Pointer(&input[0]))
+    }
+    return int(C.wc_ShaHash(sanIn,
                C.word32(inputSz), (*C.uchar)(unsafe.Pointer(&output[0]))))
 }
 
 func Wc_Sha256Hash(input []byte, inputSz int, output []byte) int {
-    return int(C.wc_Sha256Hash((*C.uchar)(unsafe.Pointer(&input[0])),
+    if inputSz < 0 || inputSz > len(input) { return BAD_FUNC_ARG }
+    if len(output) < WC_SHA256_DIGEST_SIZE { return BAD_FUNC_ARG }
+    var sanIn *C.uchar
+    if len(input) > 0 {
+        sanIn = (*C.uchar)(unsafe.Pointer(&input[0]))
+    }
+    return int(C.wc_Sha256Hash(sanIn,
                C.word32(inputSz), (*C.uchar)(unsafe.Pointer(&output[0]))))
 }
 
 func Wc_Sha384Hash(input []byte, inputSz int, output []byte) int {
-    return int(C.wc_Sha384Hash((*C.uchar)(unsafe.Pointer(&input[0])),
+    if inputSz < 0 || inputSz > len(input) { return BAD_FUNC_ARG }
+    if len(output) < WC_SHA384_DIGEST_SIZE { return BAD_FUNC_ARG }
+    var sanIn *C.uchar
+    if len(input) > 0 {
+        sanIn = (*C.uchar)(unsafe.Pointer(&input[0]))
+    }
+    return int(C.wc_Sha384Hash(sanIn,
                C.word32(inputSz), (*C.uchar)(unsafe.Pointer(&output[0]))))
 }
 
 func Wc_Sha512Hash(input []byte, inputSz int, output []byte) int {
-    return int(C.wc_Sha512Hash((*C.uchar)(unsafe.Pointer(&input[0])),
+    if inputSz < 0 || inputSz > len(input) { return BAD_FUNC_ARG }
+    if len(output) < WC_SHA512_DIGEST_SIZE { return BAD_FUNC_ARG }
+    var sanIn *C.uchar
+    if len(input) > 0 {
+        sanIn = (*C.uchar)(unsafe.Pointer(&input[0]))
+    }
+    return int(C.wc_Sha512Hash(sanIn,
                C.word32(inputSz), (*C.uchar)(unsafe.Pointer(&output[0]))))
 }
