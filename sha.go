@@ -51,5 +51,6 @@ func Wc_Sha256Update(sha *C.struct_wc_Sha256, in []byte, inSz int) int {
 }
 
 func Wc_Sha256Final(sha *C.struct_wc_Sha256, out []byte) int {
+    if len(out) < WC_SHA256_DIGEST_SIZE { return -173 }
     return int(C.wc_Sha256Final(sha, (*C.uchar)(unsafe.Pointer(&out[0]))))
 }
