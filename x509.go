@@ -184,7 +184,7 @@ func WolfSSL_X509_free(x509 *WOLFSSL_X509) {
 }
 
 func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen int) int {
-	if len(*in) == 0 {
+	if len(*in) == 0 || inLen < 0 || inLen > len(*in) {
 		return -1
 	}
 	
@@ -203,6 +203,7 @@ func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen 
 	if result >= 0 {
 		newPtr := *(**C.uchar)(unsafe.Pointer(cInPtr))
 		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*in)[0]))
+		if offset > uintptr(len(*in)) { return -1 }
 		*in = (*in)[offset:]
 		*objLen = int(cLen)
 		*tag = int(cTag)
@@ -213,7 +214,7 @@ func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen 
 }
 
 func WolfSSL_d2i_ASN1_OBJECT(a **WOLFSSL_ASN1_OBJECT, der *[]byte, length int) *WOLFSSL_ASN1_OBJECT {
-	if len(*der) == 0 {
+	if len(*der) == 0 || length < 0 || length > len(*der) {
 		return nil
 	}
 	
@@ -233,6 +234,7 @@ func WolfSSL_d2i_ASN1_OBJECT(a **WOLFSSL_ASN1_OBJECT, der *[]byte, length int) *
 	if result != nil {
 		newPtr := *(**C.uchar)(unsafe.Pointer(cDerPtr))
 		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*der)[0]))
+		if offset > uintptr(len(*der)) { return nil }
 		*der = (*der)[offset:]
 	}
 	
