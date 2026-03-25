@@ -124,13 +124,13 @@ func WolfSSL_X509_verify_cert(ctx *C.WOLFSSL_X509_STORE_CTX) int {
 }
 
 func WolfSSL_X509_load_certificate_buffer(buff []byte, buffSz int, certType int) *C.WOLFSSL_X509 {
+	if buffSz < 0 || buffSz > len(buff) || len(buff) == 0 { return nil }
 	return C.wolfSSL_X509_load_certificate_buffer((*C.byte)(unsafe.Pointer(&buff[0])), C.int(buffSz), C.int(certType))
 }
 
 func WolfSSL_X509_get_pubkey_buffer(cert *WOLFSSL_X509, out []byte, outLen *int) int {
-	if outLen == nil {
-		return BAD_FUNC_ARG
-	}
+	if outLen == nil { return BAD_FUNC_ARG }
+	if len(out) > 0 && (*outLen < 0 || *outLen > len(out)) { return BAD_FUNC_ARG }
 	var outPtr *C.uchar
 	if len(out) > 0 {
 		outPtr = (*C.uchar)(unsafe.Pointer(&out[0]))
