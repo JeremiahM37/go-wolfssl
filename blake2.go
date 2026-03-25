@@ -112,7 +112,7 @@ func Wc_Blake2s_HMAC(out []byte, in, key []byte, outlen int) {
         if ret != 0 { return }
         ret = Wc_Blake2sUpdate(&state, key, keylen)
         if ret != 0 { return }
-        ret = Wc_Blake2sFinal(&state, x_key[:], 0)
+        ret = Wc_Blake2sFinal(&state, x_key[:], WC_BLAKE2S_256_DIGEST_SIZE)
         if ret != 0 { return }
     } else {
         copy(x_key[:], key)
@@ -131,7 +131,7 @@ func Wc_Blake2s_HMAC(out []byte, in, key []byte, outlen int) {
     if ret != 0 { return }
     ret = Wc_Blake2sUpdate(&state, in, inlen)
     if ret != 0 { return }
-    ret = Wc_Blake2sFinal(&state, i_hash[:], 0)
+    ret = Wc_Blake2sFinal(&state, i_hash[:], WC_BLAKE2S_256_DIGEST_SIZE)
     if ret != 0 { return }
 
     for i = 0; i < WC_BLAKE2S_256_BLOCK_SIZE; i++ {
@@ -144,7 +144,7 @@ func Wc_Blake2s_HMAC(out []byte, in, key []byte, outlen int) {
     if ret != 0 { return }
     ret = Wc_Blake2sUpdate(&state, i_hash[:], WC_BLAKE2S_256_DIGEST_SIZE)
     if ret != 0 { return }
-    ret = Wc_Blake2sFinal(&state, i_hash[:], 0)
+    ret = Wc_Blake2sFinal(&state, i_hash[:], WC_BLAKE2S_256_DIGEST_SIZE)
     if ret != 0 { return }
 
     copy(out[:], i_hash[:])
