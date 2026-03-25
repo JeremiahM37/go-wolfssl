@@ -285,7 +285,12 @@ func main() {
         os.Exit(1)
     }
 
-    var aes    wolfSSL.Aes
+    aes := wolfSSL.Wc_AesAllocAligned()
+    if aes == nil {
+        fmt.Println("Failed to allocate aligned Aes struct")
+        os.Exit(1)
+    }
+    defer wolfSSL.Wc_AesFreeAllocAligned(aes)
 
     inFile     := os.Args[1]
     outFile    := os.Args[2]
@@ -294,16 +299,16 @@ func main() {
 
     sizeCheck(&size)
 
-    wolfSSL.Wc_AesInit(&aes, nil, wolfSSL.INVALID_DEVID)
+    wolfSSL.Wc_AesInit(aes, nil, wolfSSL.INVALID_DEVID)
 
     if operation == "enc" {
-        AesEncrypt(aes, inFile, outFile, size)
+        AesEncrypt(*aes, inFile, outFile, size)
     } else if operation == "dec" {
-        AesDecrypt(aes, inFile, outFile, size)
+        AesDecrypt(*aes, inFile, outFile, size)
     } else {
         fmt.Println("Invalid operation. Please use enc or dec.");
         fmt.Println("Usage: ./aesEncrypt <infile name> <outfile name> <enc/dec> <key size>");
     }
 
-    wolfSSL.Wc_AesFree(&aes)
+    wolfSSL.Wc_AesFree(aes)
 }
