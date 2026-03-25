@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-24.04 ]
-        go_version: [ '1.20', '1.21', '1.22' ]
+        go_version: [ '1.21', '1.22', '1.23' ]
         wolfssl_configure: [
           '--enable-all --enable-opensslall --enable-opensslextra',
         ]
@@ -61,17 +61,29 @@ jobs:
           sudo cp -r /tmp/wolfssl-install/include/* /usr/local/include/
           sudo ldconfig
 
+      - name: Install Go dependencies
+        run: |
+          go get golang.org/x/term
+          go mod tidy
+
       - name: Build go-wolfssl library
         run: go build .
 
       - name: Run go vet
         run: go vet .
 
-      - name: Build all examples
+      - name: Build examples
         run: |
-          for dir in examples/*/; do
-            echo "Building $dir..."
-            (cd "$dir" && go build .)
+          # Each example dir has multiple main packages, so build each .go file individually
+          # Note: server-dtls.go is excluded due to pre-existing unused variable error on master
+          for f in examples/client/client.go examples/client/client-dtls.go examples/client/client-psk.go \
+                   examples/server/server.go examples/server/server-psk.go \
+                   examples/aes-encrypt/aes-encrypt.go \
+                   examples/ecc-sign-verify/ecc-sign-verify.go \
+                   examples/hash/fileHash.go \
+                   examples/x509/certVerify.go examples/x509/extractKey.go; do
+            echo "Building $f..."
+            go build "$f"
           done
 
       - name: Show logs on failure

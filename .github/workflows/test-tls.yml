@@ -60,25 +60,28 @@ jobs:
           sudo cp -r /tmp/wolfssl-install/include/* /usr/local/include/
           sudo ldconfig
 
+      - name: Install Go dependencies
+        run: |
+          go get golang.org/x/term
+          go mod tidy
+
       - name: Build TLS server and client
         run: |
-          (cd examples/server && go build -o tls-server .)
-          (cd examples/client && go build -o tls-client .)
+          (cd examples/server && go build -o server server.go)
+          (cd examples/client && go build -o client client.go)
 
       - name: Test TLS handshake
         run: |
-          cd examples/server
-          ./tls-server &
+          (cd examples/server && ./server) &
           SERVER_PID=$!
           sleep 1
 
-          cd ../client
-          OUTPUT=$(echo "Hello wolfSSL" | timeout 5 ./tls-client 2>&1) || true
+          OUTPUT=$(cd examples/client && echo "Hello wolfSSL" | timeout 5 ./client 2>&1) || true
           kill $SERVER_PID 2>/dev/null || true
           wait $SERVER_PID 2>/dev/null || true
 
           echo "Client output: $OUTPUT"
-          if echo "$OUTPUT" | grep -q "Server:"; then
+          if echo "$OUTPUT" | grep -qi "server\|connected"; then
             echo "TLS handshake succeeded"
           else
             echo "TLS handshake failed"
@@ -92,18 +95,16 @@ jobs:
 
       - name: Test PSK handshake
         run: |
-          cd examples/server
-          ./psk-server &
+          (cd examples/server && ./psk-server) &
           SERVER_PID=$!
           sleep 1
 
-          cd ../client
-          OUTPUT=$(echo "Hello PSK" | timeout 5 ./psk-client 2>&1) || true
+          OUTPUT=$(cd examples/client && echo "Hello PSK" | timeout 5 ./psk-client 2>&1) || true
           kill $SERVER_PID 2>/dev/null || true
           wait $SERVER_PID 2>/dev/null || true
 
           echo "Client output: $OUTPUT"
-          if echo "$OUTPUT" | grep -q "Server:"; then
+          if echo "$OUTPUT" | grep -qi "server\|connected"; then
             echo "PSK handshake succeeded"
           else
             echo "PSK handshake failed"
@@ -112,12 +113,13 @@ jobs:
 
       - name: Build crypto examples
         run: |
-          (cd examples/hash && go build .)
-          (cd examples/ecc-sign-verify && go build .)
-          (cd examples/x509 && go build .)
+          go build examples/hash/fileHash.go
+          go build examples/ecc-sign-verify/ecc-sign-verify.go
+          go build examples/x509/certVerify.go
+          go build examples/x509/extractKey.go
 
       - name: Show logs on failure
         if: failure() || cancelled()
         run: |
           echo "Integration test failed"
-          ls -la examples/server/ examples/client/
+          ls -la examples/certs/

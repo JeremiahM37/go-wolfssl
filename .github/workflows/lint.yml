@@ -60,8 +60,13 @@ jobs:
           sudo cp -r /tmp/wolfssl-install/include/* /usr/local/include/
           sudo ldconfig
 
+      - name: Install Go dependencies
+        run: |
+          go get golang.org/x/term
+          go mod tidy
+
       - name: Run go vet
-        run: go vet ./...
+        run: go vet .
 
       - name: Check build
-        run: go build ./...
+        run: go build .
