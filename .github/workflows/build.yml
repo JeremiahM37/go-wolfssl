@@ -1,0 +1,81 @@
+name: Go Build Tests
+
+# START OF COMMON SECTION
+on:
+  push:
+    branches: [ 'master', 'main', 'release/**' ]
+  pull_request:
+    branches: [ '*' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+# END OF COMMON SECTION
+
+jobs:
+  build_library:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-24.04 ]
+        go_version: [ '1.20', '1.21', '1.22' ]
+        wolfssl_configure: [
+          '--enable-all --enable-opensslall --enable-opensslextra',
+        ]
+    name: ${{ matrix.os }} (Go ${{ matrix.go_version }}, ${{ matrix.wolfssl_configure}})
+    if: github.repository_owner == 'wolfssl'
+    runs-on: ${{ matrix.os }}
+    # This should be a safe limit for the tests to run.
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go_version }}
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool
+
+      - name: Cache wolfSSL build
+        id: cache-wolfssl
+        uses: actions/cache@v4
+        with:
+          path: /tmp/wolfssl-install
+          key: wolfssl-${{ runner.os }}-${{ hashFiles('.github/workflows/build.yml') }}
+
+      - name: Build native wolfSSL
+        if: steps.cache-wolfssl.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/wolfSSL/wolfssl.git /tmp/wolfssl
+          cd /tmp/wolfssl
+          ./autogen.sh
+          ./configure --prefix=/tmp/wolfssl-install ${{ matrix.wolfssl_configure }}
+          make -j$(nproc)
+          make install
+
+      - name: Install wolfSSL system-wide
+        run: |
+          sudo cp -r /tmp/wolfssl-install/lib/* /usr/local/lib/
+          sudo cp -r /tmp/wolfssl-install/include/* /usr/local/include/
+          sudo ldconfig
+
+      - name: Build go-wolfssl library
+        run: go build .
+
+      - name: Run go vet
+        run: go vet .
+
+      - name: Build all examples
+        run: |
+          for dir in examples/*/; do
+            echo "Building $dir..."
+            (cd "$dir" && go build .)
+          done
+
+      - name: Show logs on failure
+        if: failure() || cancelled()
+        run: |
+          echo "Build failed"
+          go env
