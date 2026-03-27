@@ -1,0 +1,125 @@
+name: TLS Integration Tests
+
+# START OF COMMON SECTION
+on:
+  push:
+    branches: [ 'master', 'main', 'release/**' ]
+  pull_request:
+    branches: [ '*' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+# END OF COMMON SECTION
+
+jobs:
+  tls_handshake:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-24.04 ]
+        wolfssl_configure: [
+          '--enable-all --enable-opensslall --enable-opensslextra',
+        ]
+    name: ${{ matrix.os }} TLS/PSK handshake test
+    if: github.repository_owner == 'wolfssl'
+    runs-on: ${{ matrix.os }}
+    # This should be a safe limit for the tests to run.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool
+
+      - name: Cache wolfSSL build
+        id: cache-wolfssl
+        uses: actions/cache@v4
+        with:
+          path: /tmp/wolfssl-install
+          key: wolfssl-${{ runner.os }}-${{ hashFiles('.github/workflows/test-tls.yml') }}
+
+      - name: Build native wolfSSL
+        if: steps.cache-wolfssl.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/wolfSSL/wolfssl.git /tmp/wolfssl
+          cd /tmp/wolfssl
+          ./autogen.sh
+          ./configure --prefix=/tmp/wolfssl-install ${{ matrix.wolfssl_configure }}
+          make -j$(nproc)
+          make install
+
+      - name: Install wolfSSL system-wide
+        run: |
+          sudo cp -r /tmp/wolfssl-install/lib/* /usr/local/lib/
+          sudo cp -r /tmp/wolfssl-install/include/* /usr/local/include/
+          sudo ldconfig
+
+      - name: Install Go dependencies
+        run: |
+          go get golang.org/x/term
+          go mod tidy
+
+      - name: Build TLS server and client
+        run: |
+          (cd examples/server && go build -o server server.go)
+          (cd examples/client && go build -o client client.go)
+
+      - name: Test TLS handshake
+        run: |
+          (cd examples/server && ./server) &
+          SERVER_PID=$!
+          sleep 1
+
+          OUTPUT=$(cd examples/client && echo "Hello wolfSSL" | timeout 5 ./client 2>&1) || true
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+
+          echo "Client output: $OUTPUT"
+          if echo "$OUTPUT" | grep -qi "server\|connected"; then
+            echo "TLS handshake succeeded"
+          else
+            echo "TLS handshake failed"
+            exit 1
+          fi
+
+      - name: Build PSK server and client
+        run: |
+          (cd examples/server && go build -o psk-server server-psk.go)
+          (cd examples/client && go build -o psk-client client-psk.go)
+
+      - name: Test PSK handshake
+        run: |
+          (cd examples/server && ./psk-server) &
+          SERVER_PID=$!
+          sleep 1
+
+          OUTPUT=$(cd examples/client && echo "Hello PSK" | timeout 5 ./psk-client 2>&1) || true
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+
+          echo "Client output: $OUTPUT"
+          if echo "$OUTPUT" | grep -qi "server\|connected"; then
+            echo "PSK handshake succeeded"
+          else
+            echo "PSK handshake failed"
+            exit 1
+          fi
+
+      - name: Build crypto examples
+        run: |
+          go build examples/hash/fileHash.go
+          go build examples/ecc-sign-verify/ecc-sign-verify.go
+          go build examples/x509/certVerify.go
+          go build examples/x509/extractKey.go
+
+      - name: Show logs on failure
+        if: failure() || cancelled()
+        run: |
+          echo "Integration test failed"
+          ls -la examples/certs/

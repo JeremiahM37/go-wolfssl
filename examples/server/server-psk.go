@@ -62,8 +62,8 @@ func main() {
     /* Initialize wolfSSL */
     wolfSSL.WolfSSL_Init()
 
-    /* Create WOLFSSL_CTX with tlsv13 */
-    ctx := wolfSSL.WolfSSL_CTX_new(wolfSSL.WolfTLSv1_3_server_method())
+    /* Create WOLFSSL_CTX with tlsv12 */
+    ctx := wolfSSL.WolfSSL_CTX_new(wolfSSL.WolfTLSv1_2_server_method())
     if ctx == nil {
         fmt.Println(" WolfSSL_CTX_new Failed");
         os.Exit(1)

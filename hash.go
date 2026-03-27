@@ -36,6 +36,7 @@ package wolfSSL
 //  }
 // #endif
 // #ifdef NO_SHA256
+// #define WC_SHA256_DIGEST_SIZE 1
 // int wc_Sha256Hash(const byte* data, word32 len, byte* hash) {
 //      return -174;
 //  }
@@ -47,6 +48,7 @@ package wolfSSL
 //  }
 // #endif
 // #ifndef WOLFSSL_SHA512
+// #define WC_SHA512_DIGEST_SIZE 1
 // int wc_Sha512Hash(const byte* data, word32 len, byte* hash) {
 //      return -174;
 //  }

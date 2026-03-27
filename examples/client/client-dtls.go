@@ -125,7 +125,7 @@ func main() {
     /* Shutdown wolfSSL */
     wolfSSL.WolfSSL_shutdown(ssl)
     /* Free allocated DTLS peer */
-    wolfSSL.WolfSSL_set_fd(ssl, int(fd))
+    wolfSSL.WolfSSL_dtls_free_peer(addr)
     /* Free wolfSSL and wolfSSL_CTX objects */
     wolfSSL.WolfSSL_free(ssl)
     wolfSSL.WolfSSL_CTX_free(ctx)

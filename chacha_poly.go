@@ -77,6 +77,10 @@ const XCHACHA20_POLY1305_AEAD_NONCE_SIZE = int(C.XCHACHA20_POLY1305_AEAD_NONCE_S
 const CHACHA20_POLY1305_AEAD_NONCE_SIZE = XCHACHA20_POLY1305_AEAD_NONCE_SIZE/2
 
 func Wc_ChaCha20Poly1305_Encrypt(inKey, inIv, inAAD, inPlain, outCipher, outAuthTag []byte) int {
+    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return -173 }
+    if len(inIv) < CHACHA20_POLY1305_AEAD_IV_SIZE { return -173 }
+    if len(outAuthTag) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return -173 }
+    if len(outCipher) < len(inPlain) { return -173 }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
@@ -93,8 +97,7 @@ func Wc_ChaCha20Poly1305_Encrypt(inKey, inIv, inAAD, inPlain, outCipher, outAuth
     if len(outCipher) > 0 {
         sanOutCipher = (*C.uchar)(unsafe.Pointer(&outCipher[0]))
     } else {
-        emptyStringArray := []byte("")
-        sanOutCipher = (*C.uchar)(unsafe.Pointer(&emptyStringArray))
+        sanOutCipher = (*C.uchar)(unsafe.Pointer(nil))
     }
     return int(C.wc_ChaCha20Poly1305_Encrypt((*C.uchar)(unsafe.Pointer(&inKey[0])), (*C.uchar)(unsafe.Pointer(&inIv[0])),
                sanInAAD, C.word32(len(inAAD)), sanInPlain, C.word32(len(inPlain)),
@@ -102,6 +105,10 @@ func Wc_ChaCha20Poly1305_Encrypt(inKey, inIv, inAAD, inPlain, outCipher, outAuth
 }
 
 func Wc_ChaCha20Poly1305_Decrypt(inKey, inIv, inAAD, inCipher, inAuthTag , outPlain []byte) int {
+    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return -173 }
+    if len(inIv) < CHACHA20_POLY1305_AEAD_IV_SIZE { return -173 }
+    if len(inAuthTag) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return -173 }
+    if len(outPlain) < len(inCipher) { return -173 }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
@@ -112,8 +119,7 @@ func Wc_ChaCha20Poly1305_Decrypt(inKey, inIv, inAAD, inCipher, inAuthTag , outPl
     if len(inCipher) > 0 {
         sanInCipher = (*C.uchar)(unsafe.Pointer(&inCipher[0]))
     } else {
-        emptyStringArray := []byte("")
-        sanInCipher = (*C.uchar)(unsafe.Pointer(&emptyStringArray))
+        sanInCipher = (*C.uchar)(unsafe.Pointer(nil))
     }
 
     return int(C.wc_ChaCha20Poly1305_Decrypt((*C.uchar)(unsafe.Pointer(&inKey[0])), (*C.uchar)(unsafe.Pointer(&inIv[0])),

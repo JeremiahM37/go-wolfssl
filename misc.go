@@ -23,7 +23,9 @@ package wolfSSL
 
 // #include <wolfssl/options.h>
 // #include <wolfssl/wolfcrypt/error-crypt.h>
+// #include <wolfssl/wolfcrypt/memory.h>
 import "C"
+import "unsafe"
 
 const BAD_FUNC_ARG = int(C.BAD_FUNC_ARG)
 
@@ -42,7 +44,7 @@ func ConstantCompare(a, b []byte, length int) int {
 }
 
 func zeroMemory(b []byte) {
-    for i := range b {
-        b[i] = 0
+    if len(b) > 0 {
+        C.wc_ForceZero(unsafe.Pointer(&b[0]), C.size_t(len(b)))
     }
 }

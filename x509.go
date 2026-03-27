@@ -124,13 +124,13 @@ func WolfSSL_X509_verify_cert(ctx *C.WOLFSSL_X509_STORE_CTX) int {
 }
 
 func WolfSSL_X509_load_certificate_buffer(buff []byte, buffSz int, certType int) *C.WOLFSSL_X509 {
+	if buffSz < 0 || buffSz > len(buff) || len(buff) == 0 { return nil }
 	return C.wolfSSL_X509_load_certificate_buffer((*C.byte)(unsafe.Pointer(&buff[0])), C.int(buffSz), C.int(certType))
 }
 
 func WolfSSL_X509_get_pubkey_buffer(cert *WOLFSSL_X509, out []byte, outLen *int) int {
-	if outLen == nil {
-		return BAD_FUNC_ARG
-	}
+	if outLen == nil { return BAD_FUNC_ARG }
+	if len(out) > 0 && (*outLen < 0 || *outLen > len(out)) { return BAD_FUNC_ARG }
 	var outPtr *C.uchar
 	if len(out) > 0 {
 		outPtr = (*C.uchar)(unsafe.Pointer(&out[0]))
@@ -184,7 +184,7 @@ func WolfSSL_X509_free(x509 *WOLFSSL_X509) {
 }
 
 func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen int) int {
-	if len(*in) == 0 {
+	if len(*in) == 0 || inLen < 0 || inLen > len(*in) {
 		return -1
 	}
 	
@@ -203,6 +203,7 @@ func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen 
 	if result >= 0 {
 		newPtr := *(**C.uchar)(unsafe.Pointer(cInPtr))
 		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*in)[0]))
+		if offset > uintptr(len(*in)) { return -1 }
 		*in = (*in)[offset:]
 		*objLen = int(cLen)
 		*tag = int(cTag)
@@ -213,7 +214,7 @@ func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen 
 }
 
 func WolfSSL_d2i_ASN1_OBJECT(a **WOLFSSL_ASN1_OBJECT, der *[]byte, length int) *WOLFSSL_ASN1_OBJECT {
-	if len(*der) == 0 {
+	if len(*der) == 0 || length < 0 || length > len(*der) {
 		return nil
 	}
 	
@@ -233,6 +234,7 @@ func WolfSSL_d2i_ASN1_OBJECT(a **WOLFSSL_ASN1_OBJECT, der *[]byte, length int) *
 	if result != nil {
 		newPtr := *(**C.uchar)(unsafe.Pointer(cDerPtr))
 		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*der)[0]))
+		if offset > uintptr(len(*der)) { return nil }
 		*der = (*der)[offset:]
 	}
 	
