@@ -89,8 +89,8 @@ func main() {
         os.Exit(1)
     }
 
-    /* Retrieve file descriptor from net.Conn type */
-    file,err := conn.File()//(*net.Conn).File()
+    /* Retrieve file descriptor from connected socket */
+    file,err := c.File()
     fd := file.Fd()
     wolfSSL.WolfSSL_set_fd(ssl, int(fd))
 
