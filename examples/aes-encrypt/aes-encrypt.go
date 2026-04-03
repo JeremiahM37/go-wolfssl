@@ -123,13 +123,14 @@ func AesEncrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
         salt[0] = 1
     }
 
-    ret = wolfSSL.Wc_PBKDF2(key, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
+    derivedKey := make([]byte, size)
+    ret = wolfSSL.Wc_PBKDF2(derivedKey, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
     if ret != 0 {
         fmt.Println("Failed to stretch key")
         os.Exit(1)
     }
 
-    ret = wolfSSL.Wc_AesSetKey(&aes, key, size, iv, wolfSSL.AES_ENCRYPTION)
+    ret = wolfSSL.Wc_AesSetKey(&aes, derivedKey, size, iv, wolfSSL.AES_ENCRYPTION)
     if ret != 0 {
         fmt.Println("Failed to set AES key", ret)
         os.Exit(1)
@@ -211,13 +212,14 @@ func AesDecrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
         os.Exit(1)
     }
 
-    ret = wolfSSL.Wc_PBKDF2(key, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
+    derivedKey := make([]byte, size)
+    ret = wolfSSL.Wc_PBKDF2(derivedKey, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
     if ret != 0 {
         fmt.Println("Failed to stretch key")
         os.Exit(1)
     }
 
-    ret = wolfSSL.Wc_AesSetKey(&aes, key, size, iv, wolfSSL.AES_DECRYPTION)
+    ret = wolfSSL.Wc_AesSetKey(&aes, derivedKey, size, iv, wolfSSL.AES_DECRYPTION)
     if ret != 0 {
         fmt.Println("Failed to set AES key", ret)
         os.Exit(1)
