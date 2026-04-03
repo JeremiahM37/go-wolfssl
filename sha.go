@@ -23,6 +23,21 @@ package wolfSSL
 
 // #include <wolfssl/options.h>
 // #include <wolfssl/wolfcrypt/sha256.h>
+// #ifdef NO_SHA256
+// typedef struct wc_Sha256 {} wc_Sha256;
+// int wc_InitSha256_ex(wc_Sha256* sha, void* heap, int devId) {
+//      return -174;
+// }
+// void wc_Sha256Free(wc_Sha256* sha) {
+//      return;
+// }
+// int wc_Sha256Update(wc_Sha256* sha, const byte* data, word32 len) {
+//      return -174;
+// }
+// int wc_Sha256Final(wc_Sha256* sha, byte* hash) {
+//      return -174;
+// }
+// #endif
 import "C"
 import (
     "unsafe"
