@@ -51,7 +51,7 @@ package wolfSSL
 //  }
 // #endif
 //
-// /* Negate an ECC private key: d' = order - d, then regenerate the public key.
+// /* Negate an ECC private key: d' = order - d, then regenerate the public key */
 // #if defined(HAVE_ECC) && defined(WOLFSSL_PUBLIC_MP)
 // static int wc_ecc_negate_private(ecc_key* key) {
 //     mp_int order;
