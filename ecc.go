@@ -50,6 +50,28 @@ package wolfSSL
 //      return -174;
 //  }
 // #endif
+//
+// /* Negate an ECC private key: d' = order - d, then regenerate the public key */
+// #if defined(HAVE_ECC) && defined(WOLFSSL_PUBLIC_MP)
+// static int wc_ecc_negate_private(ecc_key* key) {
+//     mp_int order;
+//     int ret;
+//     ret = mp_init(&order);
+//     if (ret != 0) return ret;
+//     ret = mp_read_radix(&order, key->dp->order, MP_RADIX_HEX);
+//     if (ret == 0)
+//         ret = mp_sub(&order, wc_ecc_key_get_priv(key),
+//                      wc_ecc_key_get_priv(key));
+//     mp_clear(&order);
+//     if (ret == 0)
+//         ret = wc_ecc_make_pub(key, NULL);
+//     return ret;
+// }
+// #else
+// static int wc_ecc_negate_private(ecc_key* key) {
+//     (void)key; return -174;
+// }
+// #endif
 import "C"
 import (
     "unsafe"
@@ -187,4 +209,8 @@ func Wc_EccPublicKeyDecode(pubKey []byte, idx *int, key *C.struct_ecc_key, pubSz
     ret := int(C.wc_EccPublicKeyDecode((*C.uchar)(unsafe.Pointer(&pubKey[0])), &cIdx, key, C.word32(pubSz)))
     *idx = int(cIdx)
     return ret
+}
+
+func Wc_ecc_negate_private(key *C.struct_ecc_key) int {
+    return int(C.wc_ecc_negate_private(key))
 }
