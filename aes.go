@@ -118,6 +118,7 @@ package wolfSSL
 // #endif
 import "C"
 import (
+    "errors"
     "fmt"
     "unsafe"
 )
@@ -291,48 +292,80 @@ func NewAesGcmAEAD(key [AES_256_KEY_SIZE]byte) *AesGcmAEAD {
 func (a *AesGcmAEAD) NonceSize() int { return AES_IV_SIZE }
 func (a *AesGcmAEAD) Overhead() int  { return AES_BLOCK_SIZE }
 
+// Error so callers can't distinguish short ciphertext from a bad tag or wrong AAD.
+var errAEADOpen = errors.New("message authentication failed")
+
+// newAesGcm allocates, initializes, and keys an AES-GCM context using the
+// AEAD's key. The returned context must be released with freeAesGcm.
+func (a *AesGcmAEAD) newAesGcm() (*C.struct_Aes, error) {
+    aes := Wc_AesAllocAligned()
+    if aes == nil {
+        return nil, errors.New("wolfSSL: AES allocation failed")
+    }
+    if ret := Wc_AesInit(aes, nil, INVALID_DEVID); ret != 0 {
+        Wc_AesFreeAllocAligned(aes)
+        return nil, fmt.Errorf("wolfSSL: AES init failed: %d", ret)
+    }
+    if ret := Wc_AesGcmSetKey(aes, a.key[:], AES_256_KEY_SIZE); ret != 0 {
+        Wc_AesFree(aes)
+        Wc_AesFreeAllocAligned(aes)
+        return nil, fmt.Errorf("wolfSSL: AES-GCM set key failed: %d", ret)
+    }
+    return aes, nil
+}
+
+func (a *AesGcmAEAD) freeAesGcm(aes *C.struct_Aes) {
+    Wc_AesFree(aes)
+    Wc_AesFreeAllocAligned(aes)
+}
+
 // Seal encrypts and authenticates plaintext, appending the result to dst.
 // The ciphertext and tag are concatenated: dst || ct || tag.
 func (a *AesGcmAEAD) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
-    aes := Wc_AesAllocAligned()
-    Wc_AesInit(aes, nil, INVALID_DEVID)
-    Wc_AesGcmSetKey(aes, a.key[:], AES_256_KEY_SIZE)
-    defer func() {
-        Wc_AesFree(aes)
-        Wc_AesFreeAllocAligned(aes)
-    }()
+    if len(nonce) != a.NonceSize() {
+        panic("incorrect nonce length given to GCM")
+    }
+
+    aes, err := a.newAesGcm()
+    if err != nil {
+        panic(err.Error())
+    }
+    defer a.freeAesGcm(aes)
 
     ct := make([]byte, len(plaintext))
     var tag [AES_BLOCK_SIZE]byte
-    Wc_AesGcmEncrypt(aes, ct, plaintext, nonce, tag[:], additionalData)
+    if ret := Wc_AesGcmEncrypt(aes, ct, plaintext, nonce, tag[:], additionalData); ret != 0 {
+        panic(fmt.Sprintf("wolfSSL: AES-GCM encrypt failed: %d", ret))
+    }
 
-    ret := append(dst, ct...)
-    ret = append(ret, tag[:]...)
-    return ret
+    out := append(dst, ct...)
+    out = append(out, tag[:]...)
+    return out
 }
 
 // Open decrypts and verifies ciphertext (which must include the appended
 // tag), appending the plaintext to dst.
 func (a *AesGcmAEAD) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
-    if len(ciphertext) < AES_BLOCK_SIZE {
-        return nil, fmt.Errorf("wolfSSL: ciphertext too short (%d bytes)", len(ciphertext))
+    if len(nonce) != a.NonceSize() {
+        panic("incorrect nonce length given to GCM")
     }
-    aes := Wc_AesAllocAligned()
-    Wc_AesInit(aes, nil, INVALID_DEVID)
-    Wc_AesGcmSetKey(aes, a.key[:], AES_256_KEY_SIZE)
-    defer func() {
-        Wc_AesFree(aes)
-        Wc_AesFreeAllocAligned(aes)
-    }()
+    if len(ciphertext) < AES_BLOCK_SIZE {
+        return nil, errAEADOpen
+    }
+
+    aes, err := a.newAesGcm()
+    if err != nil {
+        return nil, err
+    }
+    defer a.freeAesGcm(aes)
 
     ctLen := len(ciphertext) - AES_BLOCK_SIZE
     ct := ciphertext[:ctLen]
     tag := ciphertext[ctLen:]
 
     plaintext := make([]byte, ctLen)
-    ret := Wc_AesGcmDecrypt(aes, plaintext, ct, nonce, tag, additionalData)
-    if ret != 0 {
-        return nil, fmt.Errorf("wolfSSL: AES-GCM decrypt failed: %d", ret)
+    if ret := Wc_AesGcmDecrypt(aes, plaintext, ct, nonce, tag, additionalData); ret != 0 {
+        return nil, errAEADOpen
     }
     return append(dst, plaintext...), nil
 }
