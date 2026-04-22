@@ -30,6 +30,7 @@ package wolfSSL
 // #define ECC_MAX_SIG_SIZE 1
 // #define ECC_SECP256R1 1
 // typedef struct ecc_key {} ecc_key;
+// typedef struct ecc_point {} ecc_point;
 // int wc_ecc_init(ecc_key *key) {
 //      return -174;
 //  }

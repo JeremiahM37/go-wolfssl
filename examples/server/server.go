@@ -105,7 +105,7 @@ func main() {
 
     /* Recieve then print the message from client */
     ret = wolfSSL.WolfSSL_read(ssl, buf, 256)
-    if ret == -1 {
+    if ret < 0 {
         fmt.Println(" WolfSSL_read failed ");
     } else {
         fmt.Println("Client says : ", string(buf));

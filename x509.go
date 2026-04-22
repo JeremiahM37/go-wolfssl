@@ -291,6 +291,7 @@ func WolfSSL_d2i_ASN1_OBJECT(a **WOLFSSL_ASN1_OBJECT, der *[]byte, length int) *
 	if a != nil {
 		aPtr = (**C.struct_WOLFSSL_ASN1_OBJECT)(unsafe.Pointer(a))
 	}
+
 	cBuf := C.CBytes(*der)
 	defer C.free(cBuf)
 	cStart := (*C.uchar)(cBuf)

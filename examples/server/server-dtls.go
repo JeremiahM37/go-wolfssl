@@ -76,11 +76,17 @@ func main() {
     fmt.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
     buffer := make([]byte, 5)
     _, addr, err := conn.ReadFromUDP(buffer)
+    if err != nil {
+        fmt.Println("Error reading from UDP: ", err.Error())
+        os.Exit(1)
+    }
     /* Listen for an incoming connection */
     c , err := net.DialUDP(CONN_TYPE, nil, addr)
     if err != nil {
         fmt.Println("Error accepting: ", err.Error())
+        os.Exit(1)
     }
+    defer c.Close()
 
     /* Create a WOLFSSL object */
     ssl := wolfSSL.WolfSSL_new(ctx)
@@ -91,6 +97,11 @@ func main() {
 
     /* Retrieve file descriptor from connected socket */
     file,err := c.File()
+    if err != nil {
+        fmt.Println("Error getting file descriptor: ", err.Error())
+        os.Exit(1)
+    }
+    defer file.Close()
     fd := file.Fd()
     wolfSSL.WolfSSL_set_fd(ssl, int(fd))
 
@@ -110,7 +121,7 @@ func main() {
 
     /* Recieve then print the message from client */
     ret = wolfSSL.WolfSSL_read(ssl, buf, 256)
-    if ret == -1 {
+    if ret < 0 {
         fmt.Println(" WolfSSL_read failed ");
     } else {
         fmt.Println("Client says : ", string(buf));

@@ -191,6 +191,11 @@ func AesDecrypt(aes *wolfSSL.Aes, inFile string, outFile string, size int) {
     inputLength = len(input)
     length = inputLength
 
+    if length < wolfSSL.AES_BLOCK_SIZE + SALT_SIZE {
+        fmt.Println("File too short or corrupted")
+        os.Exit(1)
+    }
+
     output = make([]byte, length)
 
     key := getPass()
@@ -240,7 +245,7 @@ func AesDecrypt(aes *wolfSSL.Aes, inFile string, outFile string, size int) {
     }
 
     if salt[0] != 0 {
-        if length == 0 {
+        if length < wolfSSL.AES_BLOCK_SIZE {
             fmt.Println("File too short or corrupted")
             os.Exit(1)
         }
