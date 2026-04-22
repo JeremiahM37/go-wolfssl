@@ -264,17 +264,14 @@ func WolfSSL_accept(ssl *C.struct_WOLFSSL) int {
 }
 
 func WolfSSL_read(ssl *C.struct_WOLFSSL, data []byte, sz uintptr) int {
-    // Return BAD_FUNC_ARG on invalid input so callers do not mistake it
-    // for a clean peer close (which SSL_read signals with 0).
-    if sz == 0 || len(data) == 0 || sz > uintptr(len(data)) {
+    if sz == 0 { return 0 }
+    if len(data) == 0 || sz > uintptr(len(data)) {
         return BAD_FUNC_ARG
     }
     return int(C.wolfSSL_read(ssl, unsafe.Pointer(&data[0]), C.int(sz)))
 }
 
 func WolfSSL_write(ssl *C.struct_WOLFSSL, data []byte, sz uintptr) int {
-    // Zero-length write is a legitimate no-op; return 0 to match standard
-    // I/O conventions. Oversized sz is still invalid.
     if sz == 0 { return 0 }
     if len(data) == 0 || sz > uintptr(len(data)) {
         return BAD_FUNC_ARG

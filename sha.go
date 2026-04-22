@@ -71,6 +71,6 @@ func Wc_Sha256Copy(src *C.struct_wc_Sha256, dst *C.struct_wc_Sha256) int {
 }
 
 func Wc_Sha256Final(sha *C.struct_wc_Sha256, out []byte) int {
-    if len(out) < WC_SHA256_DIGEST_SIZE { return -173 }
+    if len(out) < WC_SHA256_DIGEST_SIZE { return BAD_FUNC_ARG }
     return int(C.wc_Sha256Final(sha, (*C.uchar)(unsafe.Pointer(&out[0]))))
 }

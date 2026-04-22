@@ -147,9 +147,7 @@ func Wc_ChaCha20Poly1305_Appended_Tag_Decrypt(inKey, inIv, inAAD, inCipher,  out
 }
 
 func Wc_XChaCha20Poly1305_Encrypt(outCipher, inPlain, inAAD, inIv, inKey []byte) int {
-    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return BAD_FUNC_ARG }
-    if len(inIv) < XCHACHA20_POLY1305_AEAD_NONCE_SIZE { return BAD_FUNC_ARG }
-    if len(outCipher) < len(inPlain) + CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return BAD_FUNC_ARG }
+    if len(inKey) == 0 || len(inIv) == 0 || len(outCipher) == 0 { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
@@ -165,20 +163,21 @@ func Wc_XChaCha20Poly1305_Encrypt(outCipher, inPlain, inAAD, inIv, inKey []byte)
 }
 
 func Wc_XChaCha20Poly1305_Decrypt(outPlain, inCipher, inAAD, inIv, inKey []byte) int {
-    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return BAD_FUNC_ARG }
-    if len(inIv) < XCHACHA20_POLY1305_AEAD_NONCE_SIZE { return BAD_FUNC_ARG }
-    if len(inCipher) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return BAD_FUNC_ARG }
-    if len(outPlain) < len(inCipher) - CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return BAD_FUNC_ARG }
+    if len(inKey) == 0 || len(inIv) == 0 { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
+    }
+    var sanInCipher *C.uchar
+    if len(inCipher) > 0 {
+        sanInCipher = (*C.uchar)(unsafe.Pointer(&inCipher[0]))
     }
     var sanOutPlain *C.uchar
     if len(outPlain) > 0 {
         sanOutPlain = (*C.uchar)(unsafe.Pointer(&outPlain[0]))
     }
     return int(C.wc_XChaCha20Poly1305_Decrypt(sanOutPlain, C.size_t(len(outPlain)),
-                (*C.uchar)(unsafe.Pointer(&inCipher[0])), C.size_t(len(inCipher)), sanInAAD, C.size_t(len(inAAD)),
+                sanInCipher, C.size_t(len(inCipher)), sanInAAD, C.size_t(len(inAAD)),
                 (*C.uchar)(unsafe.Pointer(&inIv[0])), C.size_t(len(inIv)),
                 (*C.uchar)(unsafe.Pointer(&inKey[0])), C.size_t(len(inKey))))
 }

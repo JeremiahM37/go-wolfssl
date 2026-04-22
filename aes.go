@@ -154,15 +154,18 @@ func Wc_AesFree(aes *C.struct_Aes) {
 
 func Wc_AesSetKey(aes *C.struct_Aes, key []byte, length int, iv []byte, dir int) int {
     if length < 0 || length > len(key) { return BAD_FUNC_ARG }
-    if len(key) == 0 || len(iv) < AES_IV_SIZE { return BAD_FUNC_ARG }
+    if len(key) == 0 { return BAD_FUNC_ARG }
+    var ivPtr *C.uchar
+    if len(iv) > 0 {
+        ivPtr = (*C.uchar)(unsafe.Pointer(&iv[0]))
+    }
     return int(C.wc_AesSetKey(aes, (*C.uchar)(unsafe.Pointer(&key[0])), C.word32(length),
-               (*C.uchar)(unsafe.Pointer(&iv[0])), C.int(dir)))
+               ivPtr, C.int(dir)))
 }
 
 func Wc_AesCbcEncrypt(aes *C.struct_Aes, out []byte, in []byte, sz int) int {
     if sz < 0 || sz > len(in) || sz > len(out) { return BAD_FUNC_ARG }
     if sz == 0 { return 0 }
-    if sz%AES_BLOCK_SIZE != 0 { return BAD_FUNC_ARG }
     return int(C.wc_AesCbcEncrypt(aes, (*C.uchar)(unsafe.Pointer(&out[0])),
                (*C.uchar)(unsafe.Pointer(&in[0])), C.word32(sz)))
 }
@@ -170,7 +173,6 @@ func Wc_AesCbcEncrypt(aes *C.struct_Aes, out []byte, in []byte, sz int) int {
 func Wc_AesCbcDecrypt(aes *C.struct_Aes, out []byte, in []byte, sz int) int {
     if sz < 0 || sz > len(in) || sz > len(out) { return BAD_FUNC_ARG }
     if sz == 0 { return 0 }
-    if sz%AES_BLOCK_SIZE != 0 { return BAD_FUNC_ARG }
     return int(C.wc_AesCbcDecrypt(aes, (*C.uchar)(unsafe.Pointer(&out[0])),
                (*C.uchar)(unsafe.Pointer(&in[0])), C.word32(sz)))
 }
