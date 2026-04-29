@@ -41,11 +41,12 @@ sed 's/^/\/\/ /' $OPTIONS_H                                           >> options
 echo "options.go generated."
 
 # When the supplied path is an installed wolfSSL prefix, repoint cgo
-# directives in every cgo-bearing file at $PREFIX. Skipped for
-# source-tree layouts (no <src>/lib to point -L at)l
+# directives in every cgo-bearing file at $PREFIX. Skipped for source-tree
+# layouts (no <src>/lib to point -L at).
 if [ ! -z "$PREFIX" ]; then
     sed -i.bak \
         -e "s|-I/usr/include -I/usr/include/wolfssl|-I$PREFIX/include -I$PREFIX/include/wolfssl|" \
+        -e "s| -I/usr/local/include -I/usr/local/include/wolfssl||" \
         -e "s|-L/usr/local/lib|-L$PREFIX/lib|" \
         options.go aes.go wolfx509/certgen_wolfcrypt.go wolftls/conn.go \
         && rm options.go.bak aes.go.bak wolfx509/certgen_wolfcrypt.go.bak wolftls/conn.go.bak

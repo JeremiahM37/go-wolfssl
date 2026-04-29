@@ -31,8 +31,9 @@ import (
 // VerifyOptions carries the parameters for certificate chain verification.
 // Mirrors crypto/x509.VerifyOptions (minimal subset).
 type VerifyOptions struct {
-	// Roots is the set of trusted CA certificates. If nil, verification
-	// fails unless the certificate is self-signed and in the pool itself.
+	// Roots is the set of trusted CA certificates. Required: Verify
+	// returns an error if Roots is nil. Self-signed leaves must be in
+	// the pool to validate.
 	Roots *CertPool
 
 	// Intermediates is an optional set of candidate intermediate CAs.

@@ -507,10 +507,17 @@ func (c *Conn) Close() error {
 	// Kick any in-flight Read/Write goroutines: setting a past deadline
 	// on the underlying conn forces the I/O callbacks to return error,
 	// which unblocks wolfSSL_read/wolfSSL_write so those goroutines
-	// release their RLock and this Close can proceed with Lock.
+	// release their RLock and this Close can proceed with Lock. The
+	// same kick aborts an in-flight wolfSSL_connect/accept inside
+	// doHandshake so we can safely take handshakeMu next.
 	if c.conn != nil {
 		c.conn.SetDeadline(time.Unix(1, 0))
 	}
+	// Block until any concurrent doHandshake finishes — otherwise
+	// freeSSLLocked below would free c.ssl/c.ctx out from under it
+	// (use-after-free in wolfSSL_connect / WolfSSL_get_error).
+	c.handshakeMu.Lock()
+	defer c.handshakeMu.Unlock()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.freeSSLLocked()

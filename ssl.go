@@ -46,7 +46,8 @@ package wolfSSL
 // #endif
 // #ifdef OPENSSL_ALL
 // #include <wolfssl/openssl/x509.h>
-// #else
+// #endif
+// #if !defined(OPENSSL_EXTRA) && !defined(OPENSSL_ALL)
 // void wolfSSL_OPENSSL_free(void* p) { free(p); }
 // void wolfSSL_X509_free(WOLFSSL_X509* x509) { (void)x509; }
 // #endif

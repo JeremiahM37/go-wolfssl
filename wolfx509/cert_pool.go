@@ -64,8 +64,10 @@ func (p *CertPool) AppendCertsFromPEM(pem []byte) bool {
 	if len(pem) == 0 {
 		return false
 	}
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+	// Write lock: wolfSSL_CertManagerLoadCABuffer mutates the cert manager,
+	// and concurrent loads on the same manager are not safe.
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	if p.cm == nil {
 		return false
 	}
@@ -82,8 +84,9 @@ func (p *CertPool) AddCert(c *Certificate) error {
 	if c == nil || len(c.Raw) == 0 {
 		return errors.New("wolfx509: AddCert: nil certificate or empty DER")
 	}
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+	// Write lock: see AppendCertsFromPEM.
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	if p.cm == nil {
 		return errors.New("wolfx509: AddCert: pool already freed")
 	}
