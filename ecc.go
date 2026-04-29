@@ -21,6 +21,7 @@
 
 package wolfSSL
 
+// #include <stdlib.h>
 // #include <wolfssl/options.h>
 // #include <wolfssl/wolfcrypt/ecc.h>
 // #include <wolfssl/wolfcrypt/asn_public.h>
@@ -213,4 +214,93 @@ func Wc_EccPublicKeyDecode(pubKey []byte, idx *int, key *C.struct_ecc_key, pubSz
 
 func Wc_ecc_negate_private(key *C.struct_ecc_key) int {
     return int(C.wc_ecc_negate_private(key))
+}
+
+func Wc_ecc_export_public_raw(key *C.struct_ecc_key, qx []byte, qxLen *int, qy []byte, qyLen *int) int {
+    if qxLen == nil || qyLen == nil || len(qx) == 0 || len(qy) == 0 {
+        return BAD_FUNC_ARG
+    }
+    if *qxLen < 0 || *qxLen > len(qx) || *qyLen < 0 || *qyLen > len(qy) {
+        return BAD_FUNC_ARG
+    }
+    cQxLen := C.word32(*qxLen)
+    cQyLen := C.word32(*qyLen)
+    ret := int(C.wc_ecc_export_public_raw(key,
+        (*C.byte)(unsafe.Pointer(&qx[0])), &cQxLen,
+        (*C.byte)(unsafe.Pointer(&qy[0])), &cQyLen))
+    *qxLen = int(cQxLen)
+    *qyLen = int(cQyLen)
+    return ret
+}
+
+func Wc_EccPrivateKeyDecode(input []byte, idx *int, key *C.struct_ecc_key, inSz int) int {
+    if inSz < 0 || inSz > len(input) || idx == nil || *idx < 0 || *idx > inSz || len(input) == 0 {
+        return BAD_FUNC_ARG
+    }
+    cIdx := C.word32(*idx)
+    ret := int(C.wc_EccPrivateKeyDecode((*C.byte)(unsafe.Pointer(&input[0])), &cIdx, key, C.word32(inSz)))
+    *idx = int(cIdx)
+    return ret
+}
+
+func Wc_EccKeyToDer(key *C.struct_ecc_key, out []byte) int {
+    if len(out) == 0 {
+        return BAD_FUNC_ARG
+    }
+    return int(C.wc_EccKeyToDer(key, (*C.byte)(unsafe.Pointer(&out[0])), C.word32(len(out))))
+}
+
+
+func Wc_EccPrivateKeyToDer(key *C.struct_ecc_key, out []byte) int {
+    var outPtr *C.byte
+    if len(out) > 0 {
+        outPtr = (*C.byte)(unsafe.Pointer(&out[0]))
+    }
+    return int(C.wc_EccPrivateKeyToDer(key, outPtr, C.word32(len(out))))
+}
+
+func Wc_EccKeyToPKCS8(key *C.struct_ecc_key, out []byte, outLen *int) int {
+    if outLen == nil || *outLen < 0 || *outLen > len(out) {
+        return BAD_FUNC_ARG
+    }
+    var outPtr *C.byte
+    if len(out) > 0 {
+        outPtr = (*C.byte)(unsafe.Pointer(&out[0]))
+    }
+    cOutLen := C.word32(*outLen)
+    ret := int(C.wc_EccKeyToPKCS8(key, outPtr, &cOutLen))
+    *outLen = int(cOutLen)
+    return ret
+}
+
+func Wc_EccPublicKeyToDer(key *C.struct_ecc_key, out []byte, withAlgCurve int) int {
+    var outPtr *C.byte
+    if len(out) > 0 {
+        outPtr = (*C.byte)(unsafe.Pointer(&out[0]))
+    }
+    return int(C.wc_EccPublicKeyToDer(key, outPtr, C.word32(len(out)), C.int(withAlgCurve)))
+}
+
+func Wc_GetPkcs8TraditionalOffset(input []byte, idx *int) int {
+    if idx == nil || *idx < 0 || *idx > len(input) || len(input) == 0 {
+        return BAD_FUNC_ARG
+    }
+    cIdx := C.word32(*idx)
+    ret := int(C.wc_GetPkcs8TraditionalOffset((*C.byte)(unsafe.Pointer(&input[0])), &cIdx, C.word32(len(input))))
+    *idx = int(cIdx)
+    return ret
+}
+
+func Wc_KeyPemToDer(pem []byte, out []byte, pass string) int {
+    if len(pem) == 0 {
+        return BAD_FUNC_ARG
+    }
+    cPass := C.CString(pass)
+    defer C.free(unsafe.Pointer(cPass))
+    var outPtr *C.uchar
+    if len(out) > 0 {
+        outPtr = (*C.uchar)(unsafe.Pointer(&out[0]))
+    }
+    return int(C.wc_KeyPemToDer((*C.uchar)(unsafe.Pointer(&pem[0])), C.int(len(pem)),
+        outPtr, C.int(len(out)), cPass))
 }

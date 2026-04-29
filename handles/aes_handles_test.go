@@ -1,28 +1,51 @@
-package wolfSSL
+/* aes_handles_test.go
+ *
+ * Copyright (C) 2006-2026 wolfSSL Inc.
+ *
+ * This file is part of wolfSSL.
+ *
+ * wolfSSL is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * wolfSSL is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
+ */
+
+package handles
 
 import (
 	"bytes"
 	"crypto/cipher"
 	"testing"
+
+	wolfSSL "github.com/wolfssl/go-wolfssl"
 )
 
 // Verify AesGcmAEAD satisfies cipher.AEAD at compile time.
 var _ cipher.AEAD = (*AesGcmAEAD)(nil)
 
 func TestAesGcmAEAD_NonceAndOverhead(t *testing.T) {
-	var key [AES_256_KEY_SIZE]byte
+	var key [wolfSSL.AES_256_KEY_SIZE]byte
 	a := NewAesGcmAEAD(key)
 
-	if a.NonceSize() != AES_IV_SIZE {
-		t.Fatalf("NonceSize() = %d, want %d", a.NonceSize(), AES_IV_SIZE)
+	if a.NonceSize() != wolfSSL.GCM_NONCE_MID_SZ {
+		t.Fatalf("NonceSize() = %d, want %d", a.NonceSize(), wolfSSL.GCM_NONCE_MID_SZ)
 	}
-	if a.Overhead() != AES_BLOCK_SIZE {
-		t.Fatalf("Overhead() = %d, want %d", a.Overhead(), AES_BLOCK_SIZE)
+	if a.Overhead() != wolfSSL.AES_BLOCK_SIZE {
+		t.Fatalf("Overhead() = %d, want %d", a.Overhead(), wolfSSL.AES_BLOCK_SIZE)
 	}
 }
 
 func TestAesGcmAEAD_SealOpen_RoundTrip(t *testing.T) {
-	var key [AES_256_KEY_SIZE]byte
+	var key [wolfSSL.AES_256_KEY_SIZE]byte
 	for i := range key {
 		key[i] = byte(i)
 	}
@@ -58,7 +81,7 @@ func TestAesGcmAEAD_SealOpen_RoundTrip(t *testing.T) {
 }
 
 func TestAesGcmAEAD_SealOpen_WithAAD(t *testing.T) {
-	var key [AES_256_KEY_SIZE]byte
+	var key [wolfSSL.AES_256_KEY_SIZE]byte
 	for i := range key {
 		key[i] = byte(i * 3)
 	}
@@ -87,7 +110,7 @@ func TestAesGcmAEAD_SealOpen_WithAAD(t *testing.T) {
 }
 
 func TestAesGcmAEAD_SealOpen_EmptyPlaintext(t *testing.T) {
-	var key [AES_256_KEY_SIZE]byte
+	var key [wolfSSL.AES_256_KEY_SIZE]byte
 	key[0] = 0x42
 	a := NewAesGcmAEAD(key)
 
@@ -109,7 +132,7 @@ func TestAesGcmAEAD_SealOpen_EmptyPlaintext(t *testing.T) {
 }
 
 func TestAesGcmAEAD_DstAppend(t *testing.T) {
-	var key [AES_256_KEY_SIZE]byte
+	var key [wolfSSL.AES_256_KEY_SIZE]byte
 	key[1] = 0xFF
 	a := NewAesGcmAEAD(key)
 

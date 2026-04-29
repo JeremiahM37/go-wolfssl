@@ -34,6 +34,11 @@ package wolfSSL
 // int wc_RNG_GenerateBlock(WC_RNG* rng, byte* b, word32 sz) {
 //      return -174;
 // }
+// WC_RNG* wc_rng_new(byte* nonce, word32 nonceSz, void* heap) {
+//      (void)nonce; (void)nonceSz; (void)heap;
+//      return NULL;
+// }
+// void wc_rng_free(WC_RNG* rng) { (void)rng; }
 // #endif
 import "C"
 import (
@@ -55,4 +60,12 @@ func Wc_RNG_GenerateBlock(rng *C.struct_WC_RNG, b []byte, sz int) int {
     if sz == 0 { return 0 }
     return int(C.wc_RNG_GenerateBlock(rng, (*C.uchar)(unsafe.Pointer(&b[0])),
                C.word32(sz)))
+}
+
+func Wc_RNG_New() *C.struct_WC_RNG {
+    return C.wc_rng_new(nil, 0, nil)
+}
+
+func Wc_RNG_Free(rng *C.struct_WC_RNG) {
+    C.wc_rng_free(rng)
 }

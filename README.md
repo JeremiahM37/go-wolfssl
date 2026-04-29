@@ -14,17 +14,26 @@ make
 sudo make install
 ``` 
 
-Then clone the go-wolfssl repo and run the `./generateOptions.sh` script to customize go-wolfssl to the same feature set as wolfSSL. This script will generate an `options.go` file that will keep go-wolfssl and wolfSSL in sync. `generateOptions` should be run any time you change your wolfSSL configure options. If the path to your wolfSSL directory is `../wolfssl`, just run: 
+Then clone the go-wolfssl repo and run the `./generateOptions.sh` script to customize go-wolfssl to the same feature set as wolfSSL. This script will generate an `options.go` file that will keep go-wolfssl and wolfSSL in sync. `generateOptions` should be run any time you change your wolfSSL configure options. If the path to your wolfSSL directory is `../wolfssl`, just run:
 ```
 git clone https://github.com/wolfSSL/go-wolfssl
 cd go-wolfssl
 ./generateOptions.sh
-``` 
+```
 
 If you have a different path to your wolfSSL directory, run the script with the right path:
 ```
-./generateOptions ../files/wolfSSL
-``` 
+./generateOptions.sh ../files/wolfSSL
+```
+
+If wolfSSL is installed (i.e. `make install`'d to a custom `--prefix=...` path), pass the install prefix
+instead. The script regenerates `options.go` AND can repoint the `#cgo`
+`CFLAGS` / `LDFLAGS` directives in every cgo-bearing file to that
+prefix in one step:
+```
+./generateOptions.sh /usr/local        # system install
+./generateOptions.sh /opt/wolfssl-fips # custom prefix
+```
 
 To install the wrapper module, run these commands:
 ```

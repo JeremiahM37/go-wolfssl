@@ -1,6 +1,6 @@
-/* misc.go
+/* init.go
  *
- * Copyright (C) 2006-2025 wolfSSL Inc.
+ * Copyright (C) 2006-2026 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -19,33 +19,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-package wolfSSL
+package wolftls
 
-// #include <wolfssl/options.h>
-// #include <wolfssl/wolfcrypt/error-crypt.h>
-// #include <wolfssl/wolfcrypt/memory.h>
-import "C"
-import "unsafe"
+import (
+	wolfSSL "github.com/wolfssl/go-wolfssl"
+)
 
-const BAD_FUNC_ARG = int(C.BAD_FUNC_ARG)
-const LENGTH_ONLY_E = int(C.LENGTH_ONLY_E)
-
-func ConstantCompare(a, b []byte, length int) int {
-    if length < 0 || length > len(a) || length > len(b) { return 0 }
-    var result byte = 0
-    for i := 0; i < length; i++ {
-        result |= a[i] ^ b[i]
-    }
-
-    if result == 0 {
-        return 1
-    } else {
-        return 0
-    }
+// wolfSSLInit initializes the underlying wolfSSL library.
+func wolfSSLInit() {
+	wolfSSL.WolfSSL_Init()
 }
 
-func zeroMemory(b []byte) {
-    if len(b) > 0 {
-        C.wc_ForceZero(unsafe.Pointer(&b[0]), C.size_t(len(b)))
-    }
+// Cleanup releases global wolfSSL library resources. Call at most once,
+// only after all Conn objects have been closed. Most long-running programs
+// (e.g. Tailscale) never need to call this.
+func Cleanup() {
+	wolfSSL.WolfSSL_Cleanup()
 }
