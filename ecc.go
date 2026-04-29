@@ -252,10 +252,11 @@ func Wc_EccKeyToDer(key *C.struct_ecc_key, out []byte) int {
 
 
 func Wc_EccPrivateKeyToDer(key *C.struct_ecc_key, out []byte) int {
-    if len(out) == 0 {
-        return BAD_FUNC_ARG
+    var outPtr *C.byte
+    if len(out) > 0 {
+        outPtr = (*C.byte)(unsafe.Pointer(&out[0]))
     }
-    return int(C.wc_EccPrivateKeyToDer(key, (*C.byte)(unsafe.Pointer(&out[0])), C.word32(len(out))))
+    return int(C.wc_EccPrivateKeyToDer(key, outPtr, C.word32(len(out))))
 }
 
 func Wc_EccKeyToPKCS8(key *C.struct_ecc_key, out []byte, outLen *int) int {
@@ -273,10 +274,11 @@ func Wc_EccKeyToPKCS8(key *C.struct_ecc_key, out []byte, outLen *int) int {
 }
 
 func Wc_EccPublicKeyToDer(key *C.struct_ecc_key, out []byte, withAlgCurve int) int {
-    if len(out) == 0 {
-        return BAD_FUNC_ARG
+    var outPtr *C.byte
+    if len(out) > 0 {
+        outPtr = (*C.byte)(unsafe.Pointer(&out[0]))
     }
-    return int(C.wc_EccPublicKeyToDer(key, (*C.byte)(unsafe.Pointer(&out[0])), C.word32(len(out)), C.int(withAlgCurve)))
+    return int(C.wc_EccPublicKeyToDer(key, outPtr, C.word32(len(out)), C.int(withAlgCurve)))
 }
 
 func Wc_GetPkcs8TraditionalOffset(input []byte, idx *int) int {
@@ -290,11 +292,15 @@ func Wc_GetPkcs8TraditionalOffset(input []byte, idx *int) int {
 }
 
 func Wc_KeyPemToDer(pem []byte, out []byte, pass string) int {
-    if len(pem) == 0 || len(out) == 0 {
+    if len(pem) == 0 {
         return BAD_FUNC_ARG
     }
     cPass := C.CString(pass)
     defer C.free(unsafe.Pointer(cPass))
+    var outPtr *C.uchar
+    if len(out) > 0 {
+        outPtr = (*C.uchar)(unsafe.Pointer(&out[0]))
+    }
     return int(C.wc_KeyPemToDer((*C.uchar)(unsafe.Pointer(&pem[0])), C.int(len(pem)),
-        (*C.uchar)(unsafe.Pointer(&out[0])), C.int(len(out)), cPass))
+        outPtr, C.int(len(out)), cPass))
 }

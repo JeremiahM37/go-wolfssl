@@ -24,6 +24,7 @@ package sha256
 import (
 	"fmt"
 	"hash"
+	"runtime"
 
 	wolfSSL "github.com/wolfssl/go-wolfssl"
 )
@@ -59,6 +60,7 @@ func New() hash.Hash {
 	if ret := wolfSSL.Wc_InitSha256_ex(&d.sha, nil, wolfSSL.INVALID_DEVID); ret != 0 {
 		panic(fmt.Sprintf("wolfSSL/sha256: Wc_InitSha256_ex: %d", ret))
 	}
+	runtime.SetFinalizer(d, func(d *digest) { wolfSSL.Wc_Sha256Free(&d.sha) })
 	return d
 }
 

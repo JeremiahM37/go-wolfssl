@@ -25,6 +25,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"runtime"
 	"unsafe"
 
 	wolfSSL "github.com/wolfssl/go-wolfssl"
@@ -48,6 +49,12 @@ const (
 // dedicated RNG. The zero value is not usable; obtain one via
 // GenerateP256Key, NewEmptyEccKey, or NewEmptyEccPubKey. Callers must
 // Free the key when done; freeing twice is safe.
+//
+// EccKey is NOT currently thread-safe for use across operations that
+// consume the embedded RNG (SignDigest, GenerateP256Key, and any wolfx509 cert
+// builder call that takes this key as the signer). Either serialize
+// callers or hand each goroutine its own EccKey. Read-only ops
+// (Verify, public-key export) are safe to call concurrently.
 type EccKey struct {
 	raw    wolfSSL.Ecc_key
 	rng    wolfSSL.WC_RNG
@@ -89,6 +96,7 @@ func NewEmptyEccKey() (*EccKey, error) {
 	}
 	k.init = true
 	k.hasRng = true
+	runtime.SetFinalizer(k, (*EccKey).Free)
 	return k, nil
 }
 
@@ -100,6 +108,7 @@ func NewEmptyEccPubKey() (*EccKey, error) {
 		return nil, fmt.Errorf("wolfCrypt: wc_ecc_init: %d", ret)
 	}
 	k.init = true
+	runtime.SetFinalizer(k, (*EccKey).Free)
 	return k, nil
 }
 
@@ -126,6 +135,8 @@ func (k *EccKey) Free() {
 	wolfSSL.Wc_ecc_free(&k.raw)
 	k.init = false
 	k.live = false
+	// SetFinalizer to nil to avoid double-free
+	runtime.SetFinalizer(k, nil)
 }
 
 // Raw returns the underlying wolfCrypt ecc_key for direct use with low-level
@@ -271,6 +282,9 @@ func PublicRawXY(k *EccKey) (x, y []byte, err error) {
 // SignDigest signs a pre-computed hash digest and returns an ASN.1-DER
 // encoded ECDSA signature (SEQUENCE { r INTEGER, s INTEGER }). For P-256,
 // the caller must supply a 32-byte digest (SHA-256 output).
+//
+// Not safe to call concurrently with another SignDigest (or any other
+// RNG-consuming operation) on the same EccKey: see the EccKey type doc.
 func SignDigest(k *EccKey, digest []byte) ([]byte, error) {
 	if !k.IsLive() {
 		return nil, errors.New("handles: EccKey is not live")

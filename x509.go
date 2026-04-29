@@ -74,30 +74,11 @@ package wolfSSL
 //     out[n] = '\0';
 //     return n;
 // }
-// /* Fetch a NAME_oneline string into a Go-owned buffer. */
-// static int wolfx509_name_oneline(WOLFSSL_X509_NAME* name, char* out, int outSz) {
-//     if (name == NULL) return 0;
-//     char* s = wolfSSL_X509_NAME_oneline(name, out, outSz);
-//     if (s == NULL) return 0;
-//     return (int)strlen(s);
-// }
 // /* Fetch a single NID text value (e.g. CommonName) into a Go-owned buffer. */
 // static int wolfx509_name_get_text_by_nid(WOLFSSL_X509_NAME* name, int nid, char* out, int outSz) {
 //     if (name == NULL) return 0;
 //     int n = wolfSSL_X509_NAME_get_text_by_NID(name, nid, out, outSz);
 //     if (n < 0) return 0;
-//     return n;
-// }
-// /* Simpler direct CN accessor — wolfSSL_X509_get_subjectCN returns an
-//  * internal string pointer owned by the cert. Returns length copied. */
-// static int wolfx509_get_subject_cn(WOLFSSL_X509* x, char* out, int outSz) {
-//     if (x == NULL) return 0;
-//     char* cn = wolfSSL_X509_get_subjectCN(x);
-//     if (cn == NULL) return 0;
-//     int n = (int)strlen(cn);
-//     if (n >= outSz) n = outSz - 1;
-//     memcpy(out, cn, n);
-//     out[n] = '\0';
 //     return n;
 // }
 // /* Extract serial number bytes as raw big-endian integer bytes. */
@@ -134,9 +115,9 @@ package wolfSSL
 // }
 // #else
 // static int wolfx509_asn1_time_print(const WOLFSSL_ASN1_TIME* t, char* out, int outSz) { (void)t; (void)out; (void)outSz; return 0; }
-// static int wolfx509_name_oneline(WOLFSSL_X509_NAME* name, char* out, int outSz) { (void)name; (void)out; (void)outSz; return 0; }
+// static char* wolfSSL_X509_NAME_oneline(WOLFSSL_X509_NAME* name, char* in, int sz) { (void)name; (void)in; (void)sz; return NULL; }
 // static int wolfx509_name_get_text_by_nid(WOLFSSL_X509_NAME* name, int nid, char* out, int outSz) { (void)name; (void)nid; (void)out; (void)outSz; return 0; }
-// static int wolfx509_get_subject_cn(WOLFSSL_X509* x, char* out, int outSz) { (void)x; (void)out; (void)outSz; return 0; }
+// static char* wolfSSL_X509_get_subjectCN(WOLFSSL_X509* x) { (void)x; return NULL; }
 // static int wolfx509_get_serial_bytes(WOLFSSL_X509* x, unsigned char* out, int outSz) { (void)x; (void)out; (void)outSz; return 0; }
 // static int wolfx509_get_authority_key_id(WOLFSSL_X509* x, unsigned char* out, int outSz) { (void)x; (void)out; (void)outSz; return 0; }
 // static WOLFSSL_X509_NAME* wolfSSL_X509_get_subject_name(WOLFSSL_X509* cert) { (void)cert; return NULL; }
@@ -368,25 +349,38 @@ func WolfSSL_X509_get_issuer_name(x *WOLFSSL_X509) *WOLFSSL_X509_NAME {
 	return C.wolfSSL_X509_get_issuer_name(x)
 }
 
-// WolfSSL_X509_NAME_oneline formats the DN as a single line.
+// WolfSSL_X509_NAME_oneline formats the DN as a single line. Passing
+// NULL/0 makes wolfSSL allocate a buffer sized for the full DN, so
+// unusually long subjects don't truncate. The buffer is freed via
+// wolfSSL_OPENSSL_free.
 func WolfSSL_X509_NAME_oneline(name *WOLFSSL_X509_NAME) string {
-	var buf [1024]C.char
-	n := C.wolfx509_name_oneline(name, &buf[0], C.int(len(buf)))
-	if n <= 0 {
+	if name == nil {
 		return ""
 	}
-	return C.GoStringN(&buf[0], n)
+	cstr := C.wolfSSL_X509_NAME_oneline(name, nil, 0)
+	if cstr == nil {
+		return ""
+	}
+	defer C.wolfSSL_OPENSSL_free(unsafe.Pointer(cstr))
+	return C.GoString(cstr)
 }
 
 // WolfSSL_X509_NAME_get_text_by_NID reads the text value for the given NID
-// (e.g. NID_commonName) from name. Returns "" if not present.
+// (e.g. NID_commonName) from name. Returns "" if not present. Uses a
+// length-query call (NULL buffer) followed by a sized fetch so very
+// long attribute values aren't silently truncated.
 func WolfSSL_X509_NAME_get_text_by_NID(name *WOLFSSL_X509_NAME, nid int) string {
-	var buf [512]C.char
-	n := C.wolfx509_name_get_text_by_nid(name, C.int(nid), &buf[0], C.int(len(buf)))
+	n := C.wolfx509_name_get_text_by_nid(name, C.int(nid), nil, 0)
 	if n <= 0 {
 		return ""
 	}
-	return C.GoStringN(&buf[0], n)
+	buf := make([]byte, n+1)
+	got := C.wolfx509_name_get_text_by_nid(name, C.int(nid),
+		(*C.char)(unsafe.Pointer(&buf[0])), C.int(n+1))
+	if got <= 0 {
+		return ""
+	}
+	return string(buf[:got])
 }
 
 // NIDs we need. Values from wolfSSL's oid_sum.h / objects.h.
@@ -398,15 +392,17 @@ const (
 )
 
 // WolfSSL_X509_get_subjectCN returns the CN from the cert subject, or "".
-// This is a thin wrapper around wolfSSL_X509_get_subjectCN(), which some
-// builds expose more reliably than wolfSSL_X509_NAME_get_text_by_NID.
+// wolfSSL returns an internal pointer into the cert's subject string —
+// no allocation, no truncation, valid for the cert's lifetime.
 func WolfSSL_X509_get_subjectCN(x *WOLFSSL_X509) string {
-	var buf [256]C.char
-	n := C.wolfx509_get_subject_cn(x, &buf[0], C.int(len(buf)))
-	if n <= 0 {
+	if x == nil {
 		return ""
 	}
-	return C.GoStringN(&buf[0], n)
+	cn := C.wolfSSL_X509_get_subjectCN(x)
+	if cn == nil {
+		return ""
+	}
+	return C.GoString(cn)
 }
 
 // WolfSSL_X509_get_notBefore_str returns the NotBefore time as a printable

@@ -87,10 +87,8 @@ package wolfSSL
 // WOLFSSL* wolfSSL_write_dup(WOLFSSL* ssl) {
 //      return NULL;
 // }
-// int wolfSSL_i2d_X509(WOLFSSL_X509* x509, unsigned char** out) {
-//      (void)x509; (void)out;
-//      return -174;
-// }
+// #endif
+// #if !defined(OPENSSL_EXTRA)
 // int wolfSSL_CTX_set_min_proto_version(WOLFSSL_CTX* ctx, int v) {
 //      (void)ctx; (void)v; return -174;
 // }
@@ -492,9 +490,10 @@ func WolfSSL_CTX_new_TLSv1_3_server() *WOLFSSL_CTX {
 // ssl->session->chain (borrowed, not a copy). wolfSSL_get_chain_cert returns
 // chain->certs[idx].buffer (also borrowed). We copy immediately via C.GoBytes.
 //
-// Leaf fallback (OPENSSL_EXTRA): wolfSSL_get_peer_certificate returns a dup
-// (caller-owned, must free). wolfSSL_i2d_X509 allocates a new DER buffer
-// (caller-owned, must free with OPENSSL_free). We copy and free both.
+// Leaf fallback: wolfSSL_get_peer_certificate returns a dup (caller-owned,
+// must free). wolfSSL_X509_get_der returns an internal pointer into the
+// X509 — no allocation, valid until the X509 is freed. We copy via
+// C.GoBytes before releasing the X509.
 func WolfSSL_get_peer_cert_chain_DER(ssl *WOLFSSL) [][]byte {
     var certs [][]byte
 
@@ -521,20 +520,17 @@ func WolfSSL_get_peer_cert_chain_DER(ssl *WOLFSSL) [][]byte {
     if peerX509 == nil {
         return nil
     }
+    defer C.wolfSSL_X509_free(peerX509)
 
-    // wolfSSL_i2d_X509 allocates a new buffer — we own outPtr and must free.
-    var outPtr *C.uchar
-    length := int(C.wolfSSL_i2d_X509(peerX509, &outPtr))
-
-    // Free the X509 dup immediately — we have the DER bytes (or failed).
-    C.wolfSSL_X509_free(peerX509)
-
-    if length <= 0 || outPtr == nil {
+    // wolfSSL_X509_get_der returns an internal pointer (no copy, no free).
+    // Preferred over wolfSSL_i2d_X509: not gated on OPENSSL_EXTRA, so it's
+    // available wherever wolfSSL_get_peer_certificate is.
+    var outSz C.int
+    derPtr := C.wolfSSL_X509_get_der(peerX509, &outSz)
+    if derPtr == nil || outSz <= 0 {
         return nil
     }
-    der := C.GoBytes(unsafe.Pointer(outPtr), C.int(length))
-    C.wolfSSL_OPENSSL_free(unsafe.Pointer(outPtr))
-    return [][]byte{der}
+    return [][]byte{C.GoBytes(unsafe.Pointer(derPtr), outSz)}
 }
 
 /* Protocol version constants matching wolfSSL's internal values. */
