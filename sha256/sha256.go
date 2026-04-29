@@ -76,10 +76,7 @@ func (d *digest) Size() int { return Size }
 // BlockSize returns the hash's underlying block size.
 func (d *digest) BlockSize() int { return BlockSize }
 
-// Write adds more data to the running hash. It never returns an error.
-// (Matches the stdlib contract; wolfCrypt Update errors become
-// (0, wrapped-error) so the io.Writer contract is preserved even if
-// wolfCrypt ever returns a non-zero code.)
+// Write adds more data to the running hash.
 func (d *digest) Write(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
