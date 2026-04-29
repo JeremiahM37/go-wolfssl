@@ -94,7 +94,7 @@ func Wc_HmacUpdate(hmac *C.struct_Hmac, in []byte, inSz int) int {
 }
 
 func Wc_HmacFinal(hmac *C.struct_Hmac, out []byte) int {
-    if len(out) == 0 { return BAD_FUNC_ARG } 
+    if len(out) == 0 { return BAD_FUNC_ARG }
     return int(C.wc_HmacFinal(hmac, (*C.uchar)(unsafe.Pointer(&out[0]))))
 }
 
@@ -104,7 +104,11 @@ func Wc_HKDF(hashType int, inputKey []byte, inputKeySz int, salt []byte,
     if saltSz < 0 || saltSz > len(salt) { return BAD_FUNC_ARG }
     if infoSz < 0 || infoSz > len(info) { return BAD_FUNC_ARG }
     if outSz < 0 || outSz > len(out) { return BAD_FUNC_ARG }
-    if len(inputKey) == 0 || len(out) == 0 { return BAD_FUNC_ARG }
+    if len(out) == 0 { return BAD_FUNC_ARG }
+    var ikmPtr *C.uchar
+    if len(inputKey) > 0 {
+        ikmPtr = (*C.uchar)(unsafe.Pointer(&inputKey[0]))
+    }
     var saltPtr *C.uchar
     if len(salt) > 0 {
         saltPtr = (*C.uchar)(unsafe.Pointer(&salt[0]))
@@ -113,7 +117,7 @@ func Wc_HKDF(hashType int, inputKey []byte, inputKeySz int, salt []byte,
     if len(info) > 0 {
         infoPtr = (*C.uchar)(unsafe.Pointer(&info[0]))
     }
-    return int(C.wc_HKDF(C.int(hashType), (*C.uchar)(unsafe.Pointer(&inputKey[0])),
+    return int(C.wc_HKDF(C.int(hashType), ikmPtr,
                C.word32(inputKeySz), saltPtr,
                C.word32(saltSz), infoPtr,
                C.word32(infoSz), (*C.uchar)(unsafe.Pointer(&out[0])),

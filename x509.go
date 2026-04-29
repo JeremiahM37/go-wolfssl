@@ -23,6 +23,7 @@ package wolfSSL
 
 // #include <wolfssl/options.h>
 // #include <wolfssl/openssl/x509.h>
+// #include <wolfssl/openssl/x509v3.h>
 // #include <wolfssl/openssl/x509_vfy.h>
 // #include <wolfssl/openssl/ssl.h>
 // #include <wolfssl/openssl/stack.h>
@@ -51,15 +52,99 @@ package wolfSSL
 // typedef struct WOLFSSL_BIO {} WOLFSSL_BIO;
 // static WOLFSSL_BIO* wolfSSL_BIO_new_mem_buf(const void* buf, int len) { return NULL; }
 // static int wolfSSL_BIO_free(WOLFSSL_BIO* bio) { return -174; }
-// int wolfSSL_i2d_X509(WOLFSSL_X509* x509, unsigned char** out) { return -174; }
-// static void wolfSSL_X509_free(WOLFSSL_X509* x509) { (void)x509; }
+// extern void wolfSSL_X509_free(WOLFSSL_X509* x509);
+// extern void wolfSSL_OPENSSL_free(void* p);
+// static void wolfSSL_X509_dummy_padding(void) {}
 // static WOLFSSL_ASN1_OBJECT* wolfSSL_d2i_ASN1_OBJECT(WOLFSSL_ASN1_OBJECT** a, const unsigned char** der, long length) { return NULL; }
 // int wolfSSL_ASN1_get_object(const unsigned char** in, long* objLen, int* tag, int* cls, long inLen) { return -174; }
 // static void wolfSSL_ASN1_OBJECT_free(WOLFSSL_ASN1_OBJECT* obj) { (void)obj; }
 // static WOLFSSL_ASN1_OBJECT* wolfSSL_OBJ_txt2obj(const char* s, int no_name) { return NULL; }
 // static int wolfSSL_OBJ_cmp(const WOLFSSL_ASN1_OBJECT* a, const WOLFSSL_ASN1_OBJECT* b) { return -174; }
-// static void wolfSSL_OPENSSL_free(void* p) { (void)p; }
 // #endif
+// /* Helper to fetch the ASN1_TIME-printed string for NotBefore/NotAfter via
+//  * a temporary BIO. Returns length written (<= outSz) or 0 on error. */
+// #if defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL)
+// static int wolfx509_asn1_time_print(const WOLFSSL_ASN1_TIME* t, char* out, int outSz) {
+//     WOLFSSL_BIO* bio = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+//     if (bio == NULL) return 0;
+//     if (wolfSSL_ASN1_TIME_print(bio, t) != 1) { wolfSSL_BIO_free(bio); return 0; }
+//     int n = wolfSSL_BIO_read(bio, out, outSz - 1);
+//     wolfSSL_BIO_free(bio);
+//     if (n <= 0) return 0;
+//     out[n] = '\0';
+//     return n;
+// }
+// /* Fetch a NAME_oneline string into a Go-owned buffer. */
+// static int wolfx509_name_oneline(WOLFSSL_X509_NAME* name, char* out, int outSz) {
+//     if (name == NULL) return 0;
+//     char* s = wolfSSL_X509_NAME_oneline(name, out, outSz);
+//     if (s == NULL) return 0;
+//     return (int)strlen(s);
+// }
+// /* Fetch a single NID text value (e.g. CommonName) into a Go-owned buffer. */
+// static int wolfx509_name_get_text_by_nid(WOLFSSL_X509_NAME* name, int nid, char* out, int outSz) {
+//     if (name == NULL) return 0;
+//     int n = wolfSSL_X509_NAME_get_text_by_NID(name, nid, out, outSz);
+//     if (n < 0) return 0;
+//     return n;
+// }
+// /* Simpler direct CN accessor — wolfSSL_X509_get_subjectCN returns an
+//  * internal string pointer owned by the cert. Returns length copied. */
+// static int wolfx509_get_subject_cn(WOLFSSL_X509* x, char* out, int outSz) {
+//     if (x == NULL) return 0;
+//     char* cn = wolfSSL_X509_get_subjectCN(x);
+//     if (cn == NULL) return 0;
+//     int n = (int)strlen(cn);
+//     if (n >= outSz) n = outSz - 1;
+//     memcpy(out, cn, n);
+//     out[n] = '\0';
+//     return n;
+// }
+// /* Extract serial number bytes as raw big-endian integer bytes. */
+// static int wolfx509_get_serial_bytes(WOLFSSL_X509* x, unsigned char* out, int outSz) {
+//     if (x == NULL) return 0;
+//     int len = outSz;
+//     int ret = wolfSSL_X509_get_serial_number(x, out, &len);
+//     if (ret != WOLFSSL_SUCCESS) return 0;
+//     return len;
+// }
+// /* Extract the keyIdentifier bytes from the AuthorityKeyIdentifier
+//  * extension (RFC 5280 §4.2.1.1). Returns the length copied or 0 if
+//  * the extension is absent. */
+// static int wolfx509_get_authority_key_id(WOLFSSL_X509* x, unsigned char* out, int outSz) {
+//     if (x == NULL) return 0;
+//     WOLFSSL_AUTHORITY_KEYID* akid = (WOLFSSL_AUTHORITY_KEYID*)wolfSSL_X509_get_ext_d2i(
+//         x, NID_authority_key_identifier, NULL, NULL);
+//     if (akid == NULL) return 0;
+//     int n = 0;
+//     /* wolfSSL populates the AKI keyIdentifier bytes inside the
+//      * issuer ASN1_OBJECT's obj/objSz fields (see
+//      * wolfSSL_X509_get_ext_d2i → AUTH_KEY_OID in wolfssl/src/x509.c),
+//      * not in the keyid ASN1_STRING that the OpenSSL struct layout
+//      * suggests. Read from issuer->obj accordingly. */
+//     if (akid->issuer != NULL && akid->issuer->obj != NULL) {
+//         int len = (int)akid->issuer->objSz;
+//         if (len > 0 && len <= outSz) {
+//             memcpy(out, akid->issuer->obj, len);
+//             n = len;
+//         }
+//     }
+//     wolfSSL_AUTHORITY_KEYID_free(akid);
+//     return n;
+// }
+// #else
+// static int wolfx509_asn1_time_print(const WOLFSSL_ASN1_TIME* t, char* out, int outSz) { (void)t; (void)out; (void)outSz; return 0; }
+// static int wolfx509_name_oneline(WOLFSSL_X509_NAME* name, char* out, int outSz) { (void)name; (void)out; (void)outSz; return 0; }
+// static int wolfx509_name_get_text_by_nid(WOLFSSL_X509_NAME* name, int nid, char* out, int outSz) { (void)name; (void)nid; (void)out; (void)outSz; return 0; }
+// static int wolfx509_get_subject_cn(WOLFSSL_X509* x, char* out, int outSz) { (void)x; (void)out; (void)outSz; return 0; }
+// static int wolfx509_get_serial_bytes(WOLFSSL_X509* x, unsigned char* out, int outSz) { (void)x; (void)out; (void)outSz; return 0; }
+// static int wolfx509_get_authority_key_id(WOLFSSL_X509* x, unsigned char* out, int outSz) { (void)x; (void)out; (void)outSz; return 0; }
+// static WOLFSSL_X509_NAME* wolfSSL_X509_get_subject_name(WOLFSSL_X509* cert) { (void)cert; return NULL; }
+// static WOLFSSL_X509_NAME* wolfSSL_X509_get_issuer_name(WOLFSSL_X509* cert) { (void)cert; return NULL; }
+// static WOLFSSL_ASN1_TIME* wolfSSL_X509_get_notBefore(const WOLFSSL_X509* x) { (void)x; return NULL; }
+// static WOLFSSL_ASN1_TIME* wolfSSL_X509_get_notAfter(const WOLFSSL_X509* x) { (void)x; return NULL; }
+// #endif
+// #include <string.h>
 import "C"
 import (
     "sync"
@@ -71,6 +156,8 @@ var bioBufMap sync.Map
 type WOLFSSL_X509 = C.struct_WOLFSSL_X509
 type WOLFSSL_BIO = C.struct_WOLFSSL_BIO
 type WOLFSSL_ASN1_OBJECT = C.struct_WOLFSSL_ASN1_OBJECT
+type WOLFSSL_X509_NAME = C.struct_WOLFSSL_X509_NAME
+type WOLFSSL_CERT_MANAGER = C.struct_WOLFSSL_CERT_MANAGER
 
 // X509_STORE wrappers
 func WolfSSL_X509_STORE_new() *C.WOLFSSL_X509_STORE {
@@ -187,19 +274,19 @@ func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen 
 	if len(*in) == 0 || inLen < 0 || inLen > len(*in) {
 		return -1
 	}
-	
+
 	cInPtr := (*C.uchar)(C.malloc(C.size_t(unsafe.Sizeof(uintptr(0)))))
 	defer C.free(unsafe.Pointer(cInPtr))
-	
+
 	inPtr := (*C.uchar)(unsafe.Pointer(&(*in)[0]))
 	*(**C.uchar)(unsafe.Pointer(cInPtr)) = inPtr
-	
+
 	var cLen C.long
 	var cTag C.int
 	var cCls C.int
-	
+
 	result := int(C.wolfSSL_ASN1_get_object((**C.uchar)(unsafe.Pointer(cInPtr)), &cLen, &cTag, &cCls, C.long(inLen)))
-	
+
 	if result >= 0 {
 		newPtr := *(**C.uchar)(unsafe.Pointer(cInPtr))
 		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*in)[0]))
@@ -209,7 +296,7 @@ func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen 
 		*tag = int(cTag)
 		*cls = int(cCls)
 	}
-	
+
 	return result
 }
 
@@ -217,27 +304,27 @@ func WolfSSL_d2i_ASN1_OBJECT(a **WOLFSSL_ASN1_OBJECT, der *[]byte, length int) *
 	if len(*der) == 0 || length < 0 || length > len(*der) {
 		return nil
 	}
-	
+
 	var aPtr **C.struct_WOLFSSL_ASN1_OBJECT
 	if a != nil {
 		aPtr = (**C.struct_WOLFSSL_ASN1_OBJECT)(unsafe.Pointer(a))
 	}
-	
+
 	cDerPtr := (*C.uchar)(C.malloc(C.size_t(unsafe.Sizeof(uintptr(0)))))
 	defer C.free(unsafe.Pointer(cDerPtr))
-	
+
 	derPtr := (*C.uchar)(unsafe.Pointer(&(*der)[0]))
 	*(**C.uchar)(unsafe.Pointer(cDerPtr)) = derPtr
-	
+
 	result := (*WOLFSSL_ASN1_OBJECT)(C.wolfSSL_d2i_ASN1_OBJECT(aPtr, (**C.uchar)(unsafe.Pointer(cDerPtr)), C.long(length)))
-	
+
 	if result != nil {
 		newPtr := *(**C.uchar)(unsafe.Pointer(cDerPtr))
 		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*der)[0]))
 		if offset > uintptr(len(*der)) { return nil }
 		*der = (*der)[offset:]
 	}
-	
+
 	return result
 }
 
@@ -253,4 +340,177 @@ func WolfSSL_OBJ_txt2obj(s string, noName int) *WOLFSSL_ASN1_OBJECT {
 
 func WolfSSL_OBJ_cmp(a *WOLFSSL_ASN1_OBJECT, b *WOLFSSL_ASN1_OBJECT) int {
 	return int(C.wolfSSL_OBJ_cmp((*C.struct_WOLFSSL_ASN1_OBJECT)(a), (*C.struct_WOLFSSL_ASN1_OBJECT)(b)))
+}
+
+// -----------------------------------------------------------------------------
+// Extended X.509 bindings used by the wolfx509 Go package.
+// -----------------------------------------------------------------------------
+
+// WolfSSL_d2i_X509 parses a DER-encoded cert. Returns nil on error. The caller
+// must free the result with WolfSSL_X509_free.
+func WolfSSL_d2i_X509(der []byte) *WOLFSSL_X509 {
+	if len(der) == 0 {
+		return nil
+	}
+	in := (*C.uchar)(unsafe.Pointer(&der[0]))
+	pp := &in
+	return C.wolfSSL_d2i_X509(nil, (**C.uchar)(unsafe.Pointer(pp)), C.int(len(der)))
+}
+
+// WolfSSL_X509_get_subject_name returns the Subject DN. The returned pointer
+// is owned by the certificate and must not be freed separately.
+func WolfSSL_X509_get_subject_name(x *WOLFSSL_X509) *WOLFSSL_X509_NAME {
+	return C.wolfSSL_X509_get_subject_name(x)
+}
+
+// WolfSSL_X509_get_issuer_name returns the Issuer DN.
+func WolfSSL_X509_get_issuer_name(x *WOLFSSL_X509) *WOLFSSL_X509_NAME {
+	return C.wolfSSL_X509_get_issuer_name(x)
+}
+
+// WolfSSL_X509_NAME_oneline formats the DN as a single line.
+func WolfSSL_X509_NAME_oneline(name *WOLFSSL_X509_NAME) string {
+	var buf [1024]C.char
+	n := C.wolfx509_name_oneline(name, &buf[0], C.int(len(buf)))
+	if n <= 0 {
+		return ""
+	}
+	return C.GoStringN(&buf[0], n)
+}
+
+// WolfSSL_X509_NAME_get_text_by_NID reads the text value for the given NID
+// (e.g. NID_commonName) from name. Returns "" if not present.
+func WolfSSL_X509_NAME_get_text_by_NID(name *WOLFSSL_X509_NAME, nid int) string {
+	var buf [512]C.char
+	n := C.wolfx509_name_get_text_by_nid(name, C.int(nid), &buf[0], C.int(len(buf)))
+	if n <= 0 {
+		return ""
+	}
+	return C.GoStringN(&buf[0], n)
+}
+
+// NIDs we need. Values from wolfSSL's oid_sum.h / objects.h.
+const (
+	NID_commonName     = 13
+	NID_countryName    = 14
+	NID_organizationName = 17
+	NID_organizationalUnitName = 18
+)
+
+// WolfSSL_X509_get_subjectCN returns the CN from the cert subject, or "".
+// This is a thin wrapper around wolfSSL_X509_get_subjectCN(), which some
+// builds expose more reliably than wolfSSL_X509_NAME_get_text_by_NID.
+func WolfSSL_X509_get_subjectCN(x *WOLFSSL_X509) string {
+	var buf [256]C.char
+	n := C.wolfx509_get_subject_cn(x, &buf[0], C.int(len(buf)))
+	if n <= 0 {
+		return ""
+	}
+	return C.GoStringN(&buf[0], n)
+}
+
+// WolfSSL_X509_get_notBefore_str returns the NotBefore time as a printable
+// string (e.g. "Apr 16 14:22:03 2026 GMT"). Returns "" on error.
+func WolfSSL_X509_get_notBefore_str(x *WOLFSSL_X509) string {
+	t := C.wolfSSL_X509_get_notBefore(x)
+	if t == nil {
+		return ""
+	}
+	var buf [64]C.char
+	n := C.wolfx509_asn1_time_print(t, &buf[0], C.int(len(buf)))
+	if n <= 0 {
+		return ""
+	}
+	return C.GoStringN(&buf[0], n)
+}
+
+// WolfSSL_X509_get_notAfter_str returns the NotAfter time as a printable string.
+func WolfSSL_X509_get_notAfter_str(x *WOLFSSL_X509) string {
+	t := C.wolfSSL_X509_get_notAfter(x)
+	if t == nil {
+		return ""
+	}
+	var buf [64]C.char
+	n := C.wolfx509_asn1_time_print(t, &buf[0], C.int(len(buf)))
+	if n <= 0 {
+		return ""
+	}
+	return C.GoStringN(&buf[0], n)
+}
+
+// WolfSSL_X509_get_serial_bytes returns the big-endian serial number bytes.
+func WolfSSL_X509_get_serial_bytes(x *WOLFSSL_X509) []byte {
+	var buf [128]byte
+	n := C.wolfx509_get_serial_bytes(x, (*C.uchar)(unsafe.Pointer(&buf[0])), C.int(len(buf)))
+	if n <= 0 {
+		return nil
+	}
+	out := make([]byte, int(n))
+	copy(out, buf[:n])
+	return out
+}
+
+// WolfSSL_X509_get_authority_key_id returns the raw bytes of the
+// keyIdentifier field of the AuthorityKeyIdentifier extension (RFC 5280
+// §4.2.1.1), or nil if the cert has no AKI extension. For issuers that
+// use the SHA-1 of the subject public key the result is 20 bytes, which
+// is what ACME's ARI path needs to build the {AKI}.{Serial} identifier.
+func WolfSSL_X509_get_authority_key_id(x *WOLFSSL_X509) []byte {
+	// Per RFC 5280 the keyIdentifier is nearly always a 160-bit hash;
+	// 64 bytes is comfortably above that worst case.
+	var buf [64]byte
+	n := C.wolfx509_get_authority_key_id(x, (*C.uchar)(unsafe.Pointer(&buf[0])), C.int(len(buf)))
+	if n <= 0 {
+		return nil
+	}
+	out := make([]byte, int(n))
+	copy(out, buf[:n])
+	return out
+}
+
+// WolfSSL_X509_check_host returns 1 if host matches the cert, 0 otherwise.
+func WolfSSL_X509_check_host(x *WOLFSSL_X509, host string) int {
+	if host == "" {
+		return 0
+	}
+	cHost := C.CString(host)
+	defer C.free(unsafe.Pointer(cHost))
+	return int(C.wolfSSL_X509_check_host(x, cHost, C.size_t(len(host)), 0, nil))
+}
+
+// -----------------------------------------------------------------------------
+// WOLFSSL_CERT_MANAGER wrappers (used as CertPool backend by wolfx509).
+// -----------------------------------------------------------------------------
+
+// WolfSSL_CertManagerNew creates a new cert manager. Free with
+// WolfSSL_CertManagerFree.
+func WolfSSL_CertManagerNew() *WOLFSSL_CERT_MANAGER {
+	return C.wolfSSL_CertManagerNew()
+}
+
+// WolfSSL_CertManagerFree releases a cert manager.
+func WolfSSL_CertManagerFree(cm *WOLFSSL_CERT_MANAGER) {
+	C.wolfSSL_CertManagerFree(cm)
+}
+
+// WolfSSL_CertManagerLoadCABuffer loads CA certs (PEM or DER) into the manager.
+// fileType is SSL_FILETYPE_PEM or SSL_FILETYPE_ASN1.
+func WolfSSL_CertManagerLoadCABuffer(cm *WOLFSSL_CERT_MANAGER, buf []byte, fileType int) int {
+	if len(buf) == 0 {
+		return BAD_FUNC_ARG
+	}
+	return int(C.wolfSSL_CertManagerLoadCABuffer(cm,
+		(*C.uchar)(unsafe.Pointer(&buf[0])),
+		C.long(len(buf)), C.int(fileType)))
+}
+
+// WolfSSL_CertManagerVerifyBuffer verifies a DER-encoded cert against the
+// CAs loaded into the manager. Returns WOLFSSL_SUCCESS (1) on success.
+func WolfSSL_CertManagerVerifyBuffer(cm *WOLFSSL_CERT_MANAGER, der []byte) int {
+	if len(der) == 0 {
+		return BAD_FUNC_ARG
+	}
+	return int(C.wolfSSL_CertManagerVerifyBuffer(cm,
+		(*C.uchar)(unsafe.Pointer(&der[0])),
+		C.long(len(der)), C.int(SSL_FILETYPE_ASN1)))
 }

@@ -28,6 +28,7 @@ import "C"
 import "unsafe"
 
 const BAD_FUNC_ARG = int(C.BAD_FUNC_ARG)
+const LENGTH_ONLY_E = int(C.LENGTH_ONLY_E)
 
 func ConstantCompare(a, b []byte, length int) int {
     if length < 0 || length > len(a) || length > len(b) { return 0 }
