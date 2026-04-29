@@ -44,7 +44,7 @@ func NewAesGcmAEAD(key [wolfSSL.AES_256_KEY_SIZE]byte) *AesGcmAEAD {
 	return &AesGcmAEAD{key: key}
 }
 
-func (a *AesGcmAEAD) NonceSize() int { return wolfSSL.AES_IV_SIZE }
+func (a *AesGcmAEAD) NonceSize() int { return wolfSSL.GCM_NONCE_MID_SZ }
 func (a *AesGcmAEAD) Overhead() int  { return wolfSSL.AES_BLOCK_SIZE }
 
 // Seal encrypts and authenticates plaintext, appending the result to dst.

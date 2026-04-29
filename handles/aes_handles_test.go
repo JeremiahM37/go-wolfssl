@@ -36,8 +36,8 @@ func TestAesGcmAEAD_NonceAndOverhead(t *testing.T) {
 	var key [wolfSSL.AES_256_KEY_SIZE]byte
 	a := NewAesGcmAEAD(key)
 
-	if a.NonceSize() != wolfSSL.AES_IV_SIZE {
-		t.Fatalf("NonceSize() = %d, want %d", a.NonceSize(), wolfSSL.AES_IV_SIZE)
+	if a.NonceSize() != wolfSSL.GCM_NONCE_MID_SZ {
+		t.Fatalf("NonceSize() = %d, want %d", a.NonceSize(), wolfSSL.GCM_NONCE_MID_SZ)
 	}
 	if a.Overhead() != wolfSSL.AES_BLOCK_SIZE {
 		t.Fatalf("Overhead() = %d, want %d", a.Overhead(), wolfSSL.AES_BLOCK_SIZE)

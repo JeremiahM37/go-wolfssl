@@ -123,6 +123,7 @@ import (
 
 const AES_IV_SIZE      = int(C.AES_IV_SIZE)
 const AES_BLOCK_SIZE   = int(C.AES_BLOCK_SIZE)
+const GCM_NONCE_MID_SZ = int(C.GCM_NONCE_MID_SZ)
 const AES_128_KEY_SIZE = int(C.AES_128_KEY_SIZE)
 const AES_192_KEY_SIZE = int(C.AES_192_KEY_SIZE)
 const AES_256_KEY_SIZE = int(C.AES_256_KEY_SIZE)
