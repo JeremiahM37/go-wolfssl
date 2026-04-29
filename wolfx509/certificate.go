@@ -132,13 +132,24 @@ func ParseCertificate(der []byte) (*Certificate, error) {
 		subject.CommonName = wolfSSL.WolfSSL_X509_get_subjectCN(x)
 	}
 
+	notBefore, err := parseASN1Time(wolfSSL.WolfSSL_X509_get_notBefore_str(x))
+	if err != nil {
+		wolfSSL.WolfSSL_X509_free(x)
+		return nil, fmt.Errorf("notBefore: %w", err)
+	}
+	notAfter, err := parseASN1Time(wolfSSL.WolfSSL_X509_get_notAfter_str(x))
+	if err != nil {
+		wolfSSL.WolfSSL_X509_free(x)
+		return nil, fmt.Errorf("notAfter: %w", err)
+	}
+
 	c := &Certificate{
-		x:          x,
-		Raw:        append([]byte(nil), der...),
-		Subject:    subject,
-		Issuer:     nameFromWolfSSL(wolfSSL.WolfSSL_X509_get_issuer_name(x)),
-		NotBefore:  parseASN1Time(wolfSSL.WolfSSL_X509_get_notBefore_str(x)),
-		NotAfter:   parseASN1Time(wolfSSL.WolfSSL_X509_get_notAfter_str(x)),
+		x:         x,
+		Raw:       append([]byte(nil), der...),
+		Subject:   subject,
+		Issuer:    nameFromWolfSSL(wolfSSL.WolfSSL_X509_get_issuer_name(x)),
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
 	}
 
 	if s := wolfSSL.WolfSSL_X509_get_serial_bytes(x); len(s) > 0 {
@@ -331,17 +342,17 @@ var asn1TimeLayouts = []string{
 }
 
 // parseASN1Time parses the printable string produced by
-// wolfSSL_ASN1_TIME_print into a Go time.Time. Returns zero time on
-// unrecognized input.
-func parseASN1Time(s string) time.Time {
+// wolfSSL_ASN1_TIME_print into a Go time.Time. Returns an error if the
+// input is empty or doesn't match any known layout.
+func parseASN1Time(s string) (time.Time, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return time.Time{}
+		return time.Time{}, fmt.Errorf("%w: empty ASN.1 time string", ErrInvalidCert)
 	}
 	for _, layout := range asn1TimeLayouts {
 		if t, err := time.Parse(layout, s); err == nil {
-			return t
+			return t, nil
 		}
 	}
-	return time.Time{}
+	return time.Time{}, fmt.Errorf("%w: unrecognized ASN.1 time format %q", ErrInvalidCert, s)
 }

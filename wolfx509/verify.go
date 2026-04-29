@@ -36,17 +36,18 @@ type VerifyOptions struct {
 	// the pool to validate.
 	Roots *CertPool
 
-	// Intermediates is an optional set of candidate intermediate CAs.
-	// wolfSSL's CertManager-based path doesn't currently consume these;
-	// callers should AppendCertsFromPEM them into Roots if needed.
+	// Intermediates is unused — wolfSSL's CertManager-based path can't
+	// consume a separate intermediates pool. Verify rejects opts where
+	// Intermediates is non-nil rather than silently dropping the data;
+	// callers should AppendCertsFromPEM intermediates into Roots.
 	Intermediates *CertPool
 
 	// DNSName, if non-empty, is also checked against the leaf's SANs/CN
 	// after chain verification succeeds.
 	DNSName string
 
-	// CurrentTime is currently ignored; wolfSSL uses the system clock.
-	// Accepted for crypto/x509 API symmetry only.
+	// CurrentTime is unused — wolfSSL always uses the system clock.
+	// Verify rejects opts where CurrentTime is non-zero.
 	CurrentTime time.Time
 }
 
@@ -61,6 +62,15 @@ func (c *Certificate) Verify(opts VerifyOptions) (chains [][]*Certificate, err e
 	}
 	if opts.Roots == nil {
 		return nil, fmt.Errorf("%w: no roots provided", ErrVerifyFailed)
+	}
+	// Fail loudly: wolfSSL's CertManager-based path doesn't honor Intermediates
+	// or CurrentTime (see field docs). Callers must AppendCertsFromPEM
+	// intermediates into Roots and accept the system clock for time checks.
+	if opts.Intermediates != nil {
+		return nil, fmt.Errorf("%w: Intermediates not supported; load into Roots instead", ErrVerifyFailed)
+	}
+	if !opts.CurrentTime.IsZero() {
+		return nil, fmt.Errorf("%w: CurrentTime not supported; wolfSSL uses the system clock", ErrVerifyFailed)
 	}
 
 	opts.Roots.mu.RLock()

@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -102,12 +103,16 @@ func newConn(conn net.Conn, config *Config, isClient bool) *Conn {
 	if config == nil {
 		config = &Config{}
 	}
-	return &Conn{
+	c := &Conn{
 		conn:     &recordingConn{Conn: conn},
 		config:   config.Clone(),
 		isClient: isClient,
 	}
+	runtime.SetFinalizer(c, (*Conn).finalize)
+	return c
 }
+
+func (c *Conn) finalize() { c.freeSSL() }
 
 // Handshake performs the TLS handshake if it has not already been performed.
 // It is safe to call concurrently; only the first call performs the handshake.
@@ -521,6 +526,7 @@ func (c *Conn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.freeSSLLocked()
+	runtime.SetFinalizer(c, nil)
 	if c.conn != nil {
 		err := c.conn.Close()
 		c.conn = nil

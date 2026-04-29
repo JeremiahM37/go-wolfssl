@@ -44,6 +44,13 @@ echo "options.go generated."
 # directives in every cgo-bearing file at $PREFIX. Skipped for source-tree
 # layouts (no <src>/lib to point -L at).
 if [ ! -z "$PREFIX" ]; then
+    # First normalize back to upstream defaults, so re-running this script with a new
+    # prefix overwrites the old one rather than no-op'ing.
+    sed -i.bak \
+        -e "s|-I[^ ]*/include -I[^ ]*/include/wolfssl|-I/usr/include -I/usr/include/wolfssl|" \
+        -e "s|-L[^ ]*/lib -lwolfssl|-L/usr/local/lib -lwolfssl|" \
+        options.go aes.go wolfx509/certgen_wolfcrypt.go wolftls/conn.go \
+        && rm options.go.bak aes.go.bak wolfx509/certgen_wolfcrypt.go.bak wolftls/conn.go.bak
     sed -i.bak \
         -e "s|-I/usr/include -I/usr/include/wolfssl|-I$PREFIX/include -I$PREFIX/include/wolfssl|" \
         -e "s| -I/usr/local/include -I/usr/local/include/wolfssl||" \
