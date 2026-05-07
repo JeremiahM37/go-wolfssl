@@ -256,21 +256,22 @@ func WolfSSL_ASN1_get_object(in *[]byte, objLen *int, tag *int, cls *int, inLen 
 		return -1
 	}
 
-	cInPtr := (*C.uchar)(C.malloc(C.size_t(unsafe.Sizeof(uintptr(0)))))
-	defer C.free(unsafe.Pointer(cInPtr))
-
-	inPtr := (*C.uchar)(unsafe.Pointer(&(*in)[0]))
-	*(**C.uchar)(unsafe.Pointer(cInPtr)) = inPtr
+	// Copy the input to C memory so the pointer-to-pointer indirection
+	// never holds a Go pointer (cgo rule: Go memory passed to C must not
+	// contain Go pointers).
+	cBuf := C.CBytes(*in)
+	defer C.free(cBuf)
+	cStart := (*C.uchar)(cBuf)
+	cInPtr := cStart
 
 	var cLen C.long
 	var cTag C.int
 	var cCls C.int
 
-	result := int(C.wolfSSL_ASN1_get_object((**C.uchar)(unsafe.Pointer(cInPtr)), &cLen, &cTag, &cCls, C.long(inLen)))
+	result := int(C.wolfSSL_ASN1_get_object(&cInPtr, &cLen, &cTag, &cCls, C.long(inLen)))
 
 	if result >= 0 {
-		newPtr := *(**C.uchar)(unsafe.Pointer(cInPtr))
-		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*in)[0]))
+		offset := uintptr(unsafe.Pointer(cInPtr)) - uintptr(unsafe.Pointer(cStart))
 		if offset > uintptr(len(*in)) { return -1 }
 		*in = (*in)[offset:]
 		*objLen = int(cLen)
@@ -291,17 +292,15 @@ func WolfSSL_d2i_ASN1_OBJECT(a **WOLFSSL_ASN1_OBJECT, der *[]byte, length int) *
 		aPtr = (**C.struct_WOLFSSL_ASN1_OBJECT)(unsafe.Pointer(a))
 	}
 
-	cDerPtr := (*C.uchar)(C.malloc(C.size_t(unsafe.Sizeof(uintptr(0)))))
-	defer C.free(unsafe.Pointer(cDerPtr))
+	cBuf := C.CBytes(*der)
+	defer C.free(cBuf)
+	cStart := (*C.uchar)(cBuf)
+	cDerPtr := cStart
 
-	derPtr := (*C.uchar)(unsafe.Pointer(&(*der)[0]))
-	*(**C.uchar)(unsafe.Pointer(cDerPtr)) = derPtr
-
-	result := (*WOLFSSL_ASN1_OBJECT)(C.wolfSSL_d2i_ASN1_OBJECT(aPtr, (**C.uchar)(unsafe.Pointer(cDerPtr)), C.long(length)))
+	result := (*WOLFSSL_ASN1_OBJECT)(C.wolfSSL_d2i_ASN1_OBJECT(aPtr, &cDerPtr, C.long(length)))
 
 	if result != nil {
-		newPtr := *(**C.uchar)(unsafe.Pointer(cDerPtr))
-		offset := uintptr(unsafe.Pointer(newPtr)) - uintptr(unsafe.Pointer(&(*der)[0]))
+		offset := uintptr(unsafe.Pointer(cDerPtr)) - uintptr(unsafe.Pointer(cStart))
 		if offset > uintptr(len(*der)) { return nil }
 		*der = (*der)[offset:]
 	}

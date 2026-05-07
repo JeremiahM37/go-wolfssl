@@ -87,6 +87,9 @@ func Wc_Blake2sFinal(blake2s *C.struct_Blake2s, out []byte, requestSz int) int {
 }
 
 func Wc_Blake2s_HMAC(out []byte, in, key []byte, outlen int) {
+    if outlen != WC_BLAKE2S_256_DIGEST_SIZE || len(out) < outlen {
+        return
+    }
     zeroMemory(out)
 
     var state Blake2s
@@ -102,10 +105,6 @@ func Wc_Blake2s_HMAC(out []byte, in, key []byte, outlen int) {
 
     inlen := len(in)
     keylen := len(key)
-
-    if outlen != WC_BLAKE2S_256_DIGEST_SIZE || len(out) < outlen {
-        return
-    }
 
     if keylen > WC_BLAKE2S_256_BLOCK_SIZE {
         ret = Wc_InitBlake2s(&state, WC_BLAKE2S_256_DIGEST_SIZE)

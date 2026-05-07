@@ -264,18 +264,18 @@ func WolfSSL_accept(ssl *C.struct_WOLFSSL) int {
 }
 
 func WolfSSL_read(ssl *C.struct_WOLFSSL, data []byte, sz uintptr) int {
-    if sz > uintptr(len(data)) {
-        sz = uintptr(len(data))
-    }
     if sz == 0 { return 0 }
+    if len(data) == 0 || sz > uintptr(len(data)) {
+        return BAD_FUNC_ARG
+    }
     return int(C.wolfSSL_read(ssl, unsafe.Pointer(&data[0]), C.int(sz)))
 }
 
 func WolfSSL_write(ssl *C.struct_WOLFSSL, data []byte, sz uintptr) int {
-    if sz > uintptr(len(data)) {
-        sz = uintptr(len(data))
-    }
     if sz == 0 { return 0 }
+    if len(data) == 0 || sz > uintptr(len(data)) {
+        return BAD_FUNC_ARG
+    }
     return int(C.wolfSSL_write(ssl, unsafe.Pointer(&data[0]), C.int(sz)))
 }
 

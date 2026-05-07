@@ -50,6 +50,7 @@ func sign_verify(eccKeySz int, hash []byte, printSig int) {
         fmt.Println("Failed to initialize ecc_key")
         os.Exit(1)
     }
+    defer wolfSSL.Wc_ecc_free(&key)
 
     /* Initialize rng */
     ret = wolfSSL.Wc_InitRng(&rng)
@@ -57,6 +58,7 @@ func sign_verify(eccKeySz int, hash []byte, printSig int) {
         fmt.Println("Failed to initialize rng")
         os.Exit(1)
     }
+    defer wolfSSL.Wc_FreeRng(&rng)
 
     /* Make ecc key with calculated byteField */
     ret = wolfSSL.Wc_ecc_make_key(&rng, byteField, &key)

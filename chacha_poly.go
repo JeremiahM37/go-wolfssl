@@ -77,27 +77,21 @@ const XCHACHA20_POLY1305_AEAD_NONCE_SIZE = int(C.XCHACHA20_POLY1305_AEAD_NONCE_S
 const CHACHA20_POLY1305_AEAD_NONCE_SIZE = XCHACHA20_POLY1305_AEAD_NONCE_SIZE/2
 
 func Wc_ChaCha20Poly1305_Encrypt(inKey, inIv, inAAD, inPlain, outCipher, outAuthTag []byte) int {
-    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return -173 }
-    if len(inIv) < CHACHA20_POLY1305_AEAD_IV_SIZE { return -173 }
-    if len(outAuthTag) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return -173 }
-    if len(outCipher) < len(inPlain) { return -173 }
+    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return BAD_FUNC_ARG }
+    if len(inIv) < CHACHA20_POLY1305_AEAD_IV_SIZE { return BAD_FUNC_ARG }
+    if len(outAuthTag) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return BAD_FUNC_ARG }
+    if len(outCipher) < len(inPlain) { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
-    } else {
-        sanInAAD = (*C.uchar)(unsafe.Pointer(nil))
     }
     var sanInPlain *C.uchar
     if len(inPlain) > 0 {
         sanInPlain = (*C.uchar)(unsafe.Pointer(&inPlain[0]))
-    } else {
-        sanInPlain = (*C.uchar)(unsafe.Pointer(nil))
     }
     var sanOutCipher *C.uchar
     if len(outCipher) > 0 {
         sanOutCipher = (*C.uchar)(unsafe.Pointer(&outCipher[0]))
-    } else {
-        sanOutCipher = (*C.uchar)(unsafe.Pointer(nil))
     }
     return int(C.wc_ChaCha20Poly1305_Encrypt((*C.uchar)(unsafe.Pointer(&inKey[0])), (*C.uchar)(unsafe.Pointer(&inIv[0])),
                sanInAAD, C.word32(len(inAAD)), sanInPlain, C.word32(len(inPlain)),
@@ -105,26 +99,26 @@ func Wc_ChaCha20Poly1305_Encrypt(inKey, inIv, inAAD, inPlain, outCipher, outAuth
 }
 
 func Wc_ChaCha20Poly1305_Decrypt(inKey, inIv, inAAD, inCipher, inAuthTag , outPlain []byte) int {
-    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return -173 }
-    if len(inIv) < CHACHA20_POLY1305_AEAD_IV_SIZE { return -173 }
-    if len(inAuthTag) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return -173 }
-    if len(outPlain) < len(inCipher) { return -173 }
+    if len(inKey) < CHACHA20_POLY1305_AEAD_KEYSIZE { return BAD_FUNC_ARG }
+    if len(inIv) < CHACHA20_POLY1305_AEAD_IV_SIZE { return BAD_FUNC_ARG }
+    if len(inAuthTag) < CHACHA20_POLY1305_AEAD_AUTHTAG_SIZE { return BAD_FUNC_ARG }
+    if len(outPlain) < len(inCipher) { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
-    } else {
-        sanInAAD = (*C.uchar)(unsafe.Pointer(nil))
     }
     var sanInCipher *C.uchar
     if len(inCipher) > 0 {
         sanInCipher = (*C.uchar)(unsafe.Pointer(&inCipher[0]))
-    } else {
-        sanInCipher = (*C.uchar)(unsafe.Pointer(nil))
+    }
+    var sanOutPlain *C.uchar
+    if len(outPlain) > 0 {
+        sanOutPlain = (*C.uchar)(unsafe.Pointer(&outPlain[0]))
     }
 
     return int(C.wc_ChaCha20Poly1305_Decrypt((*C.uchar)(unsafe.Pointer(&inKey[0])), (*C.uchar)(unsafe.Pointer(&inIv[0])),
                sanInAAD, C.word32(len(inAAD)), sanInCipher, C.word32(len(inCipher)),
-               (*C.uchar)(unsafe.Pointer(&inAuthTag[0])), (*C.uchar)(unsafe.Pointer(&outPlain[0]))))
+               (*C.uchar)(unsafe.Pointer(&inAuthTag[0])), sanOutPlain))
 }
 
 func Wc_ChaCha20Poly1305_Appended_Tag_Encrypt(inKey, inIv, inAAD, inPlain, outCipher []byte) ([]byte, int) {
@@ -153,17 +147,14 @@ func Wc_ChaCha20Poly1305_Appended_Tag_Decrypt(inKey, inIv, inAAD, inCipher,  out
 }
 
 func Wc_XChaCha20Poly1305_Encrypt(outCipher, inPlain, inAAD, inIv, inKey []byte) int {
+    if len(inKey) == 0 || len(inIv) == 0 || len(outCipher) == 0 { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
-    } else {
-        sanInAAD = (*C.uchar)(unsafe.Pointer(nil))
     }
     var sanInPlain *C.uchar
     if len(inPlain) > 0 {
         sanInPlain = (*C.uchar)(unsafe.Pointer(&inPlain[0]))
-    } else {
-        sanInPlain = (*C.uchar)(unsafe.Pointer(nil))
     }
     return int(C.wc_XChaCha20Poly1305_Encrypt((*C.uchar)(unsafe.Pointer(&outCipher[0])), C.size_t(len(outCipher)),
                 sanInPlain, C.size_t(len(inPlain)), sanInAAD, C.size_t(len(inAAD)),
@@ -172,19 +163,20 @@ func Wc_XChaCha20Poly1305_Encrypt(outCipher, inPlain, inAAD, inIv, inKey []byte)
 }
 
 func Wc_XChaCha20Poly1305_Decrypt(outPlain, inCipher, inAAD, inIv, inKey []byte) int {
+    if len(inKey) == 0 || len(inIv) == 0 { return BAD_FUNC_ARG }
     var sanInAAD *C.uchar
     if len(inAAD) > 0 {
         sanInAAD = (*C.uchar)(unsafe.Pointer(&inAAD[0]))
-    } else {
-        sanInAAD = (*C.uchar)(unsafe.Pointer(nil))
     }
     var sanInCipher *C.uchar
     if len(inCipher) > 0 {
         sanInCipher = (*C.uchar)(unsafe.Pointer(&inCipher[0]))
-    } else {
-        sanInCipher = (*C.uchar)(unsafe.Pointer(nil))
     }
-    return int(C.wc_XChaCha20Poly1305_Decrypt((*C.uchar)(unsafe.Pointer(&outPlain[0])), C.size_t(len(outPlain)),
+    var sanOutPlain *C.uchar
+    if len(outPlain) > 0 {
+        sanOutPlain = (*C.uchar)(unsafe.Pointer(&outPlain[0]))
+    }
+    return int(C.wc_XChaCha20Poly1305_Decrypt(sanOutPlain, C.size_t(len(outPlain)),
                 sanInCipher, C.size_t(len(inCipher)), sanInAAD, C.size_t(len(inAAD)),
                 (*C.uchar)(unsafe.Pointer(&inIv[0])), C.size_t(len(inIv)),
                 (*C.uchar)(unsafe.Pointer(&inKey[0])), C.size_t(len(inKey))))

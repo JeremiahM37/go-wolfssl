@@ -61,7 +61,7 @@ func getPass() []byte {
     return pass
 }
 
-func AesEncrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
+func AesEncrypt(aes *wolfSSL.Aes, inFile string, outFile string, size int) {
     var rng    wolfSSL.WC_RNG
     var input  []byte
     var output []byte
@@ -123,19 +123,20 @@ func AesEncrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
         salt[0] = 1
     }
 
-    ret = wolfSSL.Wc_PBKDF2(key, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
+    derivedKey := make([]byte, size)
+    ret = wolfSSL.Wc_PBKDF2(derivedKey, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
     if ret != 0 {
         fmt.Println("Failed to stretch key")
         os.Exit(1)
     }
 
-    ret = wolfSSL.Wc_AesSetKey(&aes, key, size, iv, wolfSSL.AES_ENCRYPTION)
+    ret = wolfSSL.Wc_AesSetKey(aes, derivedKey, size, iv, wolfSSL.AES_ENCRYPTION)
     if ret != 0 {
         fmt.Println("Failed to set AES key", ret)
         os.Exit(1)
     }
 
-    ret = wolfSSL.Wc_AesCbcEncrypt(&aes, output, input, length)
+    ret = wolfSSL.Wc_AesCbcEncrypt(aes, output, input, length)
     if ret != 0 {
         fmt.Println("Failed AES encrypt")
         os.Exit(1)
@@ -171,7 +172,7 @@ func AesEncrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
     }
 }
 
-func AesDecrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
+func AesDecrypt(aes *wolfSSL.Aes, inFile string, outFile string, size int) {
     var rng    wolfSSL.WC_RNG
     var output []byte
     var iv     []byte = make([]byte, wolfSSL.AES_BLOCK_SIZE)
@@ -189,6 +190,11 @@ func AesDecrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
 
     inputLength = len(input)
     length = inputLength
+
+    if length < wolfSSL.AES_BLOCK_SIZE + SALT_SIZE {
+        fmt.Println("File too short or corrupted")
+        os.Exit(1)
+    }
 
     output = make([]byte, length)
 
@@ -211,13 +217,14 @@ func AesDecrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
         os.Exit(1)
     }
 
-    ret = wolfSSL.Wc_PBKDF2(key, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
+    derivedKey := make([]byte, size)
+    ret = wolfSSL.Wc_PBKDF2(derivedKey, key, len(key), salt, SALT_SIZE, 4096, size, wolfSSL.WC_SHA256)
     if ret != 0 {
         fmt.Println("Failed to stretch key")
         os.Exit(1)
     }
 
-    ret = wolfSSL.Wc_AesSetKey(&aes, key, size, iv, wolfSSL.AES_DECRYPTION)
+    ret = wolfSSL.Wc_AesSetKey(aes, derivedKey, size, iv, wolfSSL.AES_DECRYPTION)
     if ret != 0 {
         fmt.Println("Failed to set AES key", ret)
         os.Exit(1)
@@ -231,14 +238,14 @@ func AesDecrypt(aes wolfSSL.Aes, inFile string, outFile string, size int) {
         i++
     }
 
-    ret = wolfSSL.Wc_AesCbcDecrypt(&aes, output, input, length)
+    ret = wolfSSL.Wc_AesCbcDecrypt(aes, output, input, length)
     if ret != 0 {
         fmt.Println("Failed AES encrypt",ret)
         os.Exit(1)
     }
 
     if salt[0] != 0 {
-        if length == 0 {
+        if length < wolfSSL.AES_BLOCK_SIZE {
             fmt.Println("File too short or corrupted")
             os.Exit(1)
         }
@@ -300,15 +307,14 @@ func main() {
     sizeCheck(&size)
 
     wolfSSL.Wc_AesInit(aes, nil, wolfSSL.INVALID_DEVID)
+    defer wolfSSL.Wc_AesFree(aes)
 
     if operation == "enc" {
-        AesEncrypt(*aes, inFile, outFile, size)
+        AesEncrypt(aes, inFile, outFile, size)
     } else if operation == "dec" {
-        AesDecrypt(*aes, inFile, outFile, size)
+        AesDecrypt(aes, inFile, outFile, size)
     } else {
         fmt.Println("Invalid operation. Please use enc or dec.");
         fmt.Println("Usage: ./aesEncrypt <infile name> <outfile name> <enc/dec> <key size>");
     }
-
-    wolfSSL.Wc_AesFree(aes)
 }

@@ -11,7 +11,7 @@
 OPTIONS_H="../wolfssl/wolfssl/options.h"
 PREFIX=""
 
-if [ ! -z "$1" ]; then
+if [ -n "$1" ]; then
     WOLFSSL_PATH="$1"
     echo "Path to wolfSSL was supplied."
 
@@ -37,7 +37,7 @@ echo "package wolfSSL" >> options.go
 echo ""                >> options.go
 echo "// #cgo CFLAGS: -g -Wall -I/usr/include -I/usr/include/wolfssl" >> options.go
 echo "// #cgo LDFLAGS: -L/usr/local/lib -lwolfssl -lm"                >> options.go
-sed 's/^/\/\/ /' $OPTIONS_H                                           >> options.go
+sed 's/^/\/\/ /' "$OPTIONS_H"                                          >> options.go
 echo "options.go generated."
 
 # When the supplied path is an installed wolfSSL prefix, repoint cgo

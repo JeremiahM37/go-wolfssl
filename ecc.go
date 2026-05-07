@@ -28,7 +28,9 @@ package wolfSSL
 // #include <wolfssl/wolfcrypt/random.h>
 // #ifndef HAVE_ECC
 // #define ECC_MAX_SIG_SIZE 1
+// #define ECC_SECP256R1 1
 // typedef struct ecc_key {} ecc_key;
+// typedef struct ecc_point {} ecc_point;
 // int wc_ecc_init(ecc_key *key) {
 //      return -174;
 //  }
@@ -36,6 +38,28 @@ package wolfSSL
 //      return -174;
 //  }
 // int wc_ecc_make_key(WC_RNG* rng, int keysize, ecc_key* key) {
+//      return -174;
+//  }
+// int wc_ecc_make_pub(ecc_key* key, ecc_point* pubOut) {
+//      return -174;
+//  }
+// int wc_ecc_set_rng(ecc_key* key, WC_RNG* rng) {
+//      return -174;
+//  }
+// int wc_ecc_export_private_only(ecc_key* key, byte* out, word32* outLen) {
+//      return -174;
+//  }
+// int wc_ecc_export_x963_ex(ecc_key* key, byte* out, word32* outLen,
+//                           int compressed) {
+//      return -174;
+//  }
+// int wc_ecc_import_private_key_ex(const byte* priv, word32 privSz,
+//                                  const byte* pub, word32 pubSz,
+//                                  ecc_key* key, int curve_id) {
+//      return -174;
+//  }
+// int wc_ecc_import_x963_ex(const byte* in, word32 inLen, ecc_key* key,
+//                           int curve_id) {
 //      return -174;
 //  }
 // int wc_ecc_sign_hash(const byte* in, word32 inlen, byte* out, word32 *outlen,
@@ -48,6 +72,13 @@ package wolfSSL
 //  }
 // int wc_EccPublicKeyDecode(const byte* input, word32* inOutIdx,
 //                        ecc_key* key, word32 inSz) {
+//      return -174;
+//  }
+// int wc_ecc_check_key(ecc_key* key) {
+//      return -174;
+//  }
+// int wc_ecc_shared_secret(ecc_key* private_key, ecc_key* public_key,
+//                          byte* out, word32* outlen) {
 //      return -174;
 //  }
 // #endif
